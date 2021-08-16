@@ -70,10 +70,10 @@ for i in range(0, numOfViews):
 
     #Adds pixel movement in direction specified 
     #unless the new pixel would be out of bounds of the current hogel
-    if(viewDir == "U") and ((pixelY + 1) < resPerHogelX):
+    if(viewDir == "D") and ((pixelY + 1) < resPerHogelX):
         pixelY = pixelY + 1
 
-    elif(viewDir == "D") and ((pixelY - 1) >= 0):
+    elif(viewDir == "U") and ((pixelY - 1) >= 0):
         pixelY = pixelY - 1
 
     elif(viewDir == "L") and ((pixelX - 1) >= 0):
