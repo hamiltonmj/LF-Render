@@ -184,18 +184,92 @@ static void windowIconifyCallback( GLFWwindow* window, int32_t iconified )
 
 static void keyCallback( GLFWwindow* window, int32_t key, int32_t /*scancode*/, int32_t action, int32_t /*mods*/ )
 {
-    if( action == GLFW_PRESS )
+    if(key == GLFW_KEY_ESCAPE )
     {
-        if( key == GLFW_KEY_Q || key == GLFW_KEY_ESCAPE )
+        if(action == GLFW_PRESS)
         {
             glfwSetWindowShouldClose( window, true );
         }
     }
-    else if( key == GLFW_KEY_SPACE )
+    /*else*/ if (key == GLFW_KEY_SPACE)
     {
         shading_changed = true;
         dc_index        = ( dc_index + 1 ) % 3;
     }
+
+
+    //Camera Movement Keys
+    //else
+    {
+        switch (key)
+        {
+        //Forward
+        case GLFW_KEY_W:
+            camera.setEye(camera.eye() + camera.direction() / 10);
+            camera.setLookat(camera.lookat() + camera.direction() / 10);
+            camera_changed = true;
+            break;
+        //Backwards
+        case GLFW_KEY_S:
+            camera.setEye(camera.eye() - camera.direction() / 10);
+            camera.setLookat(camera.lookat() - camera.direction() / 10);
+            camera_changed = true;
+            break;
+        //Left
+        case GLFW_KEY_A:
+            float3 right = normalize(cross(camera.direction(), camera.up()));
+            camera.setEye(camera.eye() - right / 10);
+            camera.setLookat(camera.lookat() - right / 10);
+            camera_changed = true;
+            break;
+        //Right
+        case GLFW_KEY_D:
+        {
+            float3 right = normalize(cross(camera.direction(), camera.up())); 
+            camera.setEye(camera.eye() + right / 10);
+            camera.setLookat(camera.lookat() + right / 10);
+            camera_changed = true;
+            break;
+        }
+        //Up
+        case GLFW_KEY_E:
+            camera.setEye(camera.eye() + camera.up() / 10);
+            camera.setLookat(camera.lookat() + camera.up() / 10);
+            camera_changed = true;
+            break;
+        //Down
+        case GLFW_KEY_Q:
+            camera.setEye(camera.eye() - camera.up() / 10);
+            camera.setLookat(camera.lookat() - camera.up() / 10);
+            camera_changed = true;
+            break;
+
+        default:
+            break;
+        }
+    }
+    /*  
+    else if (key == GLFW_KEY_W)
+    {
+    }
+    //Backward
+    else if (key == GLFW_KEY_S)
+    {
+    std::cout << "WOW";
+    camera.setEye(camera.eye() - camera.direction() / 10);
+    camera_changed = true;
+    }
+    else if (key == GLFW_KEY_S)
+    {
+    std::cout << "WOW";
+    camera.setEye(camera.eye() - camera.direction() / 10);
+    camera_changed = true;
+    }
+
+
+    }
+    //Forward
+*/
 }
 
 
