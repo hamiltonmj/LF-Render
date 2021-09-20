@@ -112,8 +112,8 @@ struct CallableProgramsState
     OptixPipelineCompileOptions pipeline_compile_options = {};
 
     CUstream                    stream                   = 0;
-    whitted::LaunchParams       params                   = {};
-    whitted::LaunchParams*      d_params                 = 0;
+   lightFieldParams       params                   = {};
+   lightFieldParams*      d_params                 = 0;
     OptixShaderBindingTable     sbt                      = {};
 };
 
@@ -142,7 +142,7 @@ static void mouseButtonCallback( GLFWwindow* window, int button, int action, int
 
 static void cursorPosCallback( GLFWwindow* window, double xpos, double ypos )
 {
-    whitted::LaunchParams* params = static_cast<whitted::LaunchParams*>( glfwGetWindowUserPointer( window ) );
+   lightFieldParams* params = static_cast<lightFieldParams*>( glfwGetWindowUserPointer( window ) );
 
     if( mouse_button == GLFW_MOUSE_BUTTON_LEFT )
     {
@@ -168,7 +168,7 @@ static void windowSizeCallback( GLFWwindow* window, int32_t res_x, int32_t res_y
     // Output dimensions must be at least 1 in both x and y.
     sutil::ensureMinimumSize( res_x, res_y );
 
-    whitted::LaunchParams* params = static_cast<whitted::LaunchParams*>( glfwGetWindowUserPointer( window ) );
+   lightFieldParams* params = static_cast<lightFieldParams*>( glfwGetWindowUserPointer( window ) );
     params->width                 = res_x;
     params->height                = res_y;
     camera_changed                = true;
@@ -296,6 +296,57 @@ void printUsageAndExit( const char* argv0 )
     exit( 0 );
 }
 
+
+
+void initlightFieldParams(CallableProgramsState& state)
+{
+    float3* tColor1Pointer = new float3(make_float3(0.1f, 0.5f,0.01f));
+    float3* tColor2Pointer = new float3(make_float3(0.9f, 0.9f, 0.01f));
+//    tColor1Pointer = 
+//    tColor1Pointer = 
+
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.testColor1), sizeof(float3)));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.testColor2), sizeof(float3)));
+
+    CUDA_CHECK(cudaMemcpy(&state.params.testColor1, tColor1Pointer, sizeof(float3), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(&state.params.testColor2, tColor2Pointer, sizeof(float3), cudaMemcpyHostToDevice));
+
+//    state.params.testColor1
+       // make_float3(0.4f, 0.4f, 0.4f)
+//    state.params.testColor2 = make_float3(0.01f, 0.01f, 0.8f);
+    delete(tColor1Pointer);
+    delete(tColor2Pointer);
+
+
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.accum_buffer),
+        state.params.width * state.params.height * sizeof(float4)));
+
+
+    //TODO :: WE need to allocate memory onto the graphics card initially as the same size as the image we load onto device memory. 
+    // so we allocate memory onto both host memory and device memory then copy over the details then use the device pointer as an launchParameter
+    // since the resize modifies the init Params going to the device need to make sure its not going to reallocate the memory
+    //
+    //
+    //  Step 1: load image onto host and get into fastest format that can be used (this is a problem within itself). This may involve decompression or other methods
+    //  Step 2: allocate Device memory based on size of host memory from the above step
+    //  step 3: load image onto device memory and potentially free the space then on the host memory
+    //  step 4: within Device now access the image and display the results.
+
+
+     /*
+        Appears we will first malloc memory on the host then cudamalloc onto the graphics card and retrieve the pointer to the graphics card memory. Once allocated on the
+        grapghics card we should also deallocate the memory on the host. After this we need to add it to the parameter struct which is used to define the pipeline
+        parameters used within the optix program, from there we need to tell the launch command to use our new parameters which we created above. This should in theory
+        allow us to then call a params.imageDataPointer or whatever the variable is called and retrieve the device pointer of the image data. From there we should be
+        able to directly acces the loaded data on the graphics card,  this process may also change so we dont get a pointer to the default data but maybe to the texture
+        object we create to better access the data. At the end we will then need to destroy our texture object and de-allocate the memory from the graphics card.
+
+     */
+
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.d_params), sizeof(lightFieldParams)));
+}
+
+
 void initLaunchParams( CallableProgramsState& state )
 {
     CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &state.params.accum_buffer ),
@@ -320,9 +371,31 @@ void initLaunchParams( CallableProgramsState& state )
                             lights.size() * sizeof( Light ), cudaMemcpyHostToDevice ) );
 
     CUDA_CHECK( cudaStreamCreate( &state.stream ) );
-    CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &state.d_params ), sizeof( whitted::LaunchParams ) ) );
+    CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &state.d_params ), sizeof(lightFieldParams ) ) );
 
     state.params.handle = state.gas_handle;
+
+//TODO :: WE need to allocate memory onto the graphics card initially as the same size as the image we load onto device memory. 
+// so we allocate memory onto both host memory and device memory then copy over the details then use the device pointer as an launchParameter
+// since the resize modifies the init Params going to the device need to make sure its not going to reallocate the memory
+//
+//
+//  Step 1: load image onto host and get into fastest format that can be used (this is a problem within itself). This may involve decompression or other methods
+//  Step 2: allocate Device memory based on size of host memory from the above step
+//  step 3: load image onto device memory and potentially free the space then on the host memory
+//  step 4: within Device now access the image and display the results.
+
+
+ /*
+    Appears we will first malloc memory on the host then cudamalloc onto the graphics card and retrieve the pointer to the graphics card memory. Once allocated on the 
+    grapghics card we should also deallocate the memory on the host. After this we need to add it to the parameter struct which is used to define the pipeline 
+    parameters used within the optix program, from there we need to tell the launch command to use our new parameters which we created above. This should in theory 
+    allow us to then call a params.imageDataPointer or whatever the variable is called and retrieve the device pointer of the image data. From there we should be 
+    able to directly acces the loaded data on the graphics card,  this process may also change so we dont get a pointer to the default data but maybe to the texture 
+    object we create to better access the data. At the end we will then need to destroy our texture object and de-allocate the memory from the graphics card.
+    
+ */
+
 }
 
 static void buildGas( const CallableProgramsState&  state,
@@ -691,7 +764,7 @@ void handleCameraUpdate( CallableProgramsState& state )
     camera.UVWFrame( state.params.U, state.params.V, state.params.W );
 }
 
-void handleResize( sutil::CUDAOutputBuffer<uchar4>& output_buffer, whitted::LaunchParams& params )
+void handleResize( sutil::CUDAOutputBuffer<uchar4>& output_buffer,lightFieldParams& params )
 {
     if( !resize_dirty )
         return;
@@ -722,10 +795,10 @@ void launchSubframe( sutil::CUDAOutputBuffer<uchar4>& output_buffer, CallablePro
     state.params.frame_buffer  = result_buffer_data;
     
     CUDA_CHECK( cudaMemcpyAsync( reinterpret_cast<void*>( state.d_params ), &state.params,
-                                 sizeof( whitted::LaunchParams ), cudaMemcpyHostToDevice, state.stream ) );
+                                 sizeof(lightFieldParams ), cudaMemcpyHostToDevice, state.stream ) );
     
     OPTIX_CHECK( optixLaunch( state.pipeline, state.stream, reinterpret_cast<CUdeviceptr>( state.d_params ),
-                              sizeof( whitted::LaunchParams ), &state.sbt,
+                              sizeof(lightFieldParams ), &state.sbt,
                               state.params.width,   // launch width
                               state.params.height,  // launch height
                               1                     // launch depth
@@ -766,6 +839,12 @@ void cleanupState( CallableProgramsState& state )
     CUDA_CHECK( cudaFree( reinterpret_cast<void*>( state.params.accum_buffer ) ) );
     CUDA_CHECK( cudaFree( reinterpret_cast<void*>( state.params.lights.data ) ) );
     CUDA_CHECK( cudaFree( reinterpret_cast<void*>( state.d_params ) ) );
+
+
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(state.params.testColor1)));
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(state.params.testColor2)));
+
+
 }
 
 int main( int argc, char* argv[] )
@@ -824,6 +903,7 @@ int main( int argc, char* argv[] )
         createPipeline( state );
         createSBT( state );
 
+        initlightFieldParams(state);
         initLaunchParams( state );
 
         //
