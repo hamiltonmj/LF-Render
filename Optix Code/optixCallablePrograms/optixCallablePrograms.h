@@ -37,28 +37,3 @@ struct HitGroupData
 {
     unsigned int color;
 };
-
-
-struct lightFieldParams : whitted::LaunchParams
-{
-/*
-    unsigned int             width;
-    unsigned int             height;
-    unsigned int             subframe_index;
-    float4* accum_buffer;
-    uchar4* frame_buffer;
-    int                      max_depth;
-
-    float3                   eye;
-    float3                   U;
-    float3                   V;
-    float3                   W;
-
-    BufferView<Light>        lights;
-    float3                   miss_color;
-    OptixTraversableHandle   handle;
-*/
-
-    float3* testColor1;
-    float3* testColor2;
-};

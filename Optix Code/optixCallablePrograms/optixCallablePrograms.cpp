@@ -112,8 +112,8 @@ struct CallableProgramsState
     OptixPipelineCompileOptions pipeline_compile_options = {};
 
     CUstream                    stream                   = 0;
-   lightFieldParams       params                   = {};
-   lightFieldParams*      d_params                 = 0;
+   whitted::LaunchParams       params                   = {};
+   whitted::LaunchParams*      d_params                 = 0;
     OptixShaderBindingTable     sbt                      = {};
 };
 
@@ -142,7 +142,7 @@ static void mouseButtonCallback( GLFWwindow* window, int button, int action, int
 
 static void cursorPosCallback( GLFWwindow* window, double xpos, double ypos )
 {
-   lightFieldParams* params = static_cast<lightFieldParams*>( glfwGetWindowUserPointer( window ) );
+   whitted::LaunchParams* params = static_cast<whitted::LaunchParams*>( glfwGetWindowUserPointer( window ) );
 
     if( mouse_button == GLFW_MOUSE_BUTTON_LEFT )
     {
@@ -168,7 +168,7 @@ static void windowSizeCallback( GLFWwindow* window, int32_t res_x, int32_t res_y
     // Output dimensions must be at least 1 in both x and y.
     sutil::ensureMinimumSize( res_x, res_y );
 
-   lightFieldParams* params = static_cast<lightFieldParams*>( glfwGetWindowUserPointer( window ) );
+   whitted::LaunchParams* params = static_cast<whitted::LaunchParams*>( glfwGetWindowUserPointer( window ) );
     params->width                 = res_x;
     params->height                = res_y;
     camera_changed                = true;
@@ -298,18 +298,18 @@ void printUsageAndExit( const char* argv0 )
 
 
 
-void initlightFieldParams(CallableProgramsState& state)
+void initlightfieldPparameters(CallableProgramsState& state)
 {
-    float3* tColor1Pointer = new float3(make_float3(0.1f, 0.5f,0.01f));
-    float3* tColor2Pointer = new float3(make_float3(0.9f, 0.9f, 0.01f));
+    float3* tColor1Pointer = new float3(make_float3(0.9f, 0.01f,0.01f));
+    float3* tColor2Pointer = new float3(make_float3(0.01f, 0.01f, 0.9f));
 //    tColor1Pointer = 
 //    tColor1Pointer = 
 
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.testColor1), sizeof(float3)));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.testColor2), sizeof(float3)));
 
-    CUDA_CHECK(cudaMemcpy(&state.params.testColor1, tColor1Pointer, sizeof(float3), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(&state.params.testColor2, tColor2Pointer, sizeof(float3), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(state.params.testColor1, tColor1Pointer, sizeof(float3), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(state.params.testColor2, tColor2Pointer, sizeof(float3), cudaMemcpyHostToDevice));
 
 //    state.params.testColor1
        // make_float3(0.4f, 0.4f, 0.4f)
@@ -340,10 +340,10 @@ void initlightFieldParams(CallableProgramsState& state)
         allow us to then call a params.imageDataPointer or whatever the variable is called and retrieve the device pointer of the image data. From there we should be
         able to directly acces the loaded data on the graphics card,  this process may also change so we dont get a pointer to the default data but maybe to the texture
         object we create to better access the data. At the end we will then need to destroy our texture object and de-allocate the memory from the graphics card.
-
      */
+     
 
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.d_params), sizeof(lightFieldParams)));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.d_params), sizeof(whitted::LaunchParams)));
 }
 
 
@@ -371,7 +371,7 @@ void initLaunchParams( CallableProgramsState& state )
                             lights.size() * sizeof( Light ), cudaMemcpyHostToDevice ) );
 
     CUDA_CHECK( cudaStreamCreate( &state.stream ) );
-    CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &state.d_params ), sizeof(lightFieldParams ) ) );
+    CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &state.d_params ), sizeof(whitted::LaunchParams ) ) );
 
     state.params.handle = state.gas_handle;
 
@@ -764,7 +764,7 @@ void handleCameraUpdate( CallableProgramsState& state )
     camera.UVWFrame( state.params.U, state.params.V, state.params.W );
 }
 
-void handleResize( sutil::CUDAOutputBuffer<uchar4>& output_buffer,lightFieldParams& params )
+void handleResize( sutil::CUDAOutputBuffer<uchar4>& output_buffer,whitted::LaunchParams& params )
 {
     if( !resize_dirty )
         return;
@@ -795,10 +795,10 @@ void launchSubframe( sutil::CUDAOutputBuffer<uchar4>& output_buffer, CallablePro
     state.params.frame_buffer  = result_buffer_data;
     
     CUDA_CHECK( cudaMemcpyAsync( reinterpret_cast<void*>( state.d_params ), &state.params,
-                                 sizeof(lightFieldParams ), cudaMemcpyHostToDevice, state.stream ) );
+                                 sizeof(whitted::LaunchParams ), cudaMemcpyHostToDevice, state.stream ) );
     
     OPTIX_CHECK( optixLaunch( state.pipeline, state.stream, reinterpret_cast<CUdeviceptr>( state.d_params ),
-                              sizeof(lightFieldParams ), &state.sbt,
+                              sizeof(whitted::LaunchParams ), &state.sbt,
                               state.params.width,   // launch width
                               state.params.height,  // launch height
                               1                     // launch depth
@@ -841,8 +841,8 @@ void cleanupState( CallableProgramsState& state )
     CUDA_CHECK( cudaFree( reinterpret_cast<void*>( state.d_params ) ) );
 
 
-    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(state.params.testColor1)));
-    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(state.params.testColor2)));
+    //CUDA_CHECK(cudaFree(reinterpret_cast<void*>(state.params.testColor1)));
+    //CUDA_CHECK(cudaFree(reinterpret_cast<void*>(state.params.testColor2)));
 
 
 }
@@ -903,7 +903,7 @@ int main( int argc, char* argv[] )
         createPipeline( state );
         createSBT( state );
 
-        initlightFieldParams(state);
+        initlightfieldPparameters(state);
         initLaunchParams( state );
 
         //
