@@ -28,6 +28,8 @@
 
 #include <glad/glad.h>  // Needs to be included before gl_interop
 
+#include "lodepng.h"
+
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
@@ -296,20 +298,93 @@ void printUsageAndExit( const char* argv0 )
     exit( 0 );
 }
 
+std::vector<std::vector<float4>> convertTo2dMatrix(const std::vector<unsigned char>& image, unsigned width, unsigned height)
+{
+    std::vector<std::vector<float4>> outImage(width, std::vector<float4>(height));
+    size_t imagePos = 0;
+    for (size_t y = 0; y < width; y++)
+    {
+        for (size_t x = 0; x < height; x++)
+        {
+            outImage[x][y].x = (float) image[imagePos]     / 255;
+            outImage[x][y].y = (float) image[imagePos + 1] / 255;
+            outImage[x][y].z = (float) image[imagePos + 2] / 255;
+            outImage[x][y].w = (float) image[imagePos + 3] /255;
+            imagePos += 4;
+        }
+    }
+    return outImage;
+}
+
+
 
 
 void initlightfieldPparameters(CallableProgramsState& state)
 {
-    float3* tColor1Pointer = new float3(make_float3(0.9f, 0.01f,0.01f));
+
+
+    std::vector<unsigned char> image;
+    unsigned width;
+    unsigned height;
+    const char* filename = "C:\\Users\\hamil\\OneDrive\\Desktop\\LightField Rendering\\customOptixSDK\\SDK\\data\\testFolder\\Colors3.PNG";
+
+    unsigned error = lodepng::decode(image, width, height, filename);
+    std::cout << "error:" << lodepng_error_text(error) << "|| width: " << width << " height: " << height << "\n";
+
+    unsigned char* imagePointer = image.data();
+
+
+    std::cout << "r:" <<(unsigned) image[0] << "g:" << (unsigned)image[1] << "b:" << (unsigned)image[2] << "\n";
+
+    unsigned int size = width * height * sizeof(unsigned);
+
+    //Allocates device memory for size of inputted image
+   // float* dData = NULL;
+   // CUDA_CHECK(cudaMalloc( (void **) dData, size));
+
+    cudaChannelFormatDesc channelDesc= cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindUnsigned);
+    cudaArray *cuArray;
+    CUDA_CHECK(cudaMallocArray(&cuArray, &channelDesc, width, height));
+
+    CUDA_CHECK(cudaMemcpyToArray(cuArray, 0, 0, imagePointer, size, cudaMemcpyHostToDevice));
+
+    cudaTextureObject_t tex;
+    cudaTextureObject_t* pointerToTex = &tex;
+    cudaResourceDesc texRes;
+    memset(&texRes, 0, sizeof(cudaResourceDesc));
+
+    texRes.resType = cudaResourceTypeArray;
+    
+    texRes.res.array.array = cuArray;
+
+    cudaTextureDesc texDescr;
+    memset(&texDescr, 0, sizeof(cudaTextureDesc));
+
+    texDescr.normalizedCoords = true;
+    texDescr.filterMode = cudaFilterModePoint;//  cudaFilterModeLinear;
+    texDescr.addressMode[0] = cudaAddressModeWrap;
+    texDescr.addressMode[1] = cudaAddressModeWrap;
+    texDescr.readMode = cudaReadModeElementType;
+
+    CUDA_CHECK(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
+
+    std::vector<std::vector<float4>> image2d = convertTo2dMatrix(image, width, height);    
+    std::cout << "2d Array r:" << image2d[15][0].x << "g:" << image2d[15][0].y << "b:" << image2d[15][0].z << "\n";
+
+    float3* tColor1Pointer = new float3(make_float3(image2d[15][0]));
     float3* tColor2Pointer = new float3(make_float3(0.01f, 0.01f, 0.9f));
-//    tColor1Pointer = 
+//    tColor1Pointer = 360 , 400
 //    tColor1Pointer = 
 
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.testColor1), sizeof(float3)));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.testColor2), sizeof(float3)));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.texture), sizeof(cudaTextureObject_t*)));
 
     CUDA_CHECK(cudaMemcpy(state.params.testColor1, tColor1Pointer, sizeof(float3), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(state.params.testColor2, tColor2Pointer, sizeof(float3), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(state.params.texture, pointerToTex, sizeof(cudaTextureObject_t*), cudaMemcpyHostToDevice));
+
+
 
 //    state.params.testColor1
        // make_float3(0.4f, 0.4f, 0.4f)

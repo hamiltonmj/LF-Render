@@ -30,6 +30,8 @@ OPTIX_add_sample_executable( optixCallablePrograms target_name
   optixCallablePrograms.cpp
   optixCallablePrograms.cu
   optixCallablePrograms.h
+  lodepng.cpp	
+  lodepng.h
   OPTIONS -rdc true
   )
 
