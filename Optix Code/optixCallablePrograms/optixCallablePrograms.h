@@ -36,4 +36,20 @@ struct EmptyData
 struct HitGroupData 
 {
     unsigned int color;
+    float3 rgb;
+    cudaTextureObject_t tex;
+};
+
+
+struct float4Array
+{
+    float4* data;
+    int size;
+};
+
+
+struct FloatArray
+{
+    float* data;
+    int size;
 };

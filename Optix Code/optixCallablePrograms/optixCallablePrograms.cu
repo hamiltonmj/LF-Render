@@ -52,17 +52,37 @@ extern "C" __global__ void __closesthit__ch1()
     // When built-in triangle intersection is used, a number of fundamental
     // attributes are provided by the OptiX API, indlucing barycentric coordinates.
     //const float2 barycentrics = optixGetTriangleBarycentrics();
-   // printf( "woweee");
+    //printf( "woweee");
     
 
     if (optixGetPrimitiveIndex() == 0)
     {
-        whitted::setPayloadResult(*params.testColor1);
         //make_float3(0.1f, 0.2f, 0.1f));
+        const HitGroupData hitData = *(const HitGroupData*)optixGetSbtDataPointer();
+
+        //Note each texture element is only 1 value of r|g|b|a in that order so 
+        //to get the pixel at location 3,3 we actually need R -[3*4] G- [3*4 + 1] B- [3*4 + 2] A [3*4 + 3]
+        float locX = 5;
+        float locY = 5;
+        
+
+        float4 r = tex2D<float4>(hitData.tex, 15     , 15);
+        //unsigned char r = tex2D<float>(hitData.tex, 0, 0);
+        //unsigned char g = tex2D<float>(hitData.tex, 0.5f / (80+1) , locY);
+        //float b = (float) tex2D<float>(hitData.tex, 0.5f / (80 +2), locY);
+        //float a = (float) tex2D<float>(hitData.tex, locX * 4 + 3, locY);
+        //whitted::setPayloadResult(abc);
+        //const char *a = new char(abc.x);
+       //printf("r: %4.5f , g: %4.5f, B: %4.5f    |||", r.x , r.y, r.z);
+      //  float fr = ((float)r) / 255;
+       // float fr = ((float)r) / 255;
+        //float fr = ((float)r) / 255;
+
+        whitted::setPayloadResult(make_float3(r.x, r.y, r.z));
     }
     else
     {
-        whitted::setPayloadResult(*params.testColor2);
+        whitted::setPayloadResult(make_float3(0.0f,0.0f,255.0f));
     }
 }
 

@@ -63,6 +63,9 @@
 //
 //------------------------------------------------------------------------------
 
+std::vector<cudaArray_t>         textureArrays;
+std::vector<cudaTextureObject_t> textureObjects;
+
 bool resize_dirty = false;
 bool minimized    = false;
 
@@ -316,7 +319,37 @@ std::vector<std::vector<float4>> convertTo2dMatrix(const std::vector<unsigned ch
     return outImage;
 }
 
+float4Array convertToFloat4Vec(const std::vector<unsigned char>& image, unsigned width, unsigned height)
+{
+    float4Array outImage;
+    outImage.data = new float4[width * height];
+    outImage.size = width * height;
+  //  std::vector<float4> outImage((int)width * height, float4());
+    size_t imagePos = 0;
+    for (size_t i = 0; i < (int)width * height; i++)
+    {
+            outImage.data[i].x = (float)image[imagePos] / 255;
+            outImage.data[i].y = (float)image[imagePos + 1] / 255;
+            outImage.data[i].z = (float)image[imagePos + 2] / 255;
+            outImage.data[i].w = (float)image[imagePos + 3] / 255;
 
+            imagePos += 4;
+    }
+    return outImage;
+}
+
+FloatArray convertToFloatArray(const std::vector<unsigned char>& image, unsigned width, unsigned height)
+{
+    FloatArray outImage;
+    outImage.data = (float *) malloc(sizeof(float) * width * height);
+    outImage.size = width * height;
+    size_t imagePos = 0;
+    for (size_t i = 0; i < (int)width * height; i++)
+    {
+        outImage.data[i] = (float)(image[i] );
+    }
+    return outImage;
+}
 
 
 void initlightfieldPparameters(CallableProgramsState& state)
@@ -326,76 +359,124 @@ void initlightfieldPparameters(CallableProgramsState& state)
     std::vector<unsigned char> image;
     unsigned width;
     unsigned height;
-    const char* filename = "C:\\Users\\hamil\\OneDrive\\Desktop\\LightField Rendering\\customOptixSDK\\SDK\\data\\testFolder\\Colors3.PNG";
+    const char* filename = "inputData/RGB.png";
 
     unsigned error = lodepng::decode(image, width, height, filename);
-    std::cout << "error:" << lodepng_error_text(error) << "|| width: " << width << " height: " << height << "\n";
-
-    unsigned char* imagePointer = image.data();
-
+    std::cout << "error:" << lodepng_error_text(error) <<" || Image.length:" << image.size() << " || width: " << width << " height: " << height << "\n";
 
     std::cout << "r:" <<(unsigned) image[0] << "g:" << (unsigned)image[1] << "b:" << (unsigned)image[2] << "\n";
 
-    unsigned int size = width * height * sizeof(unsigned);
+    unsigned int size = width * height * sizeof(float) * 4;
+
+    
+
+
 
     //Allocates device memory for size of inputted image
    // float* dData = NULL;
    // CUDA_CHECK(cudaMalloc( (void **) dData, size));
+    
+    int count = 0;
+    float4Array a = convertToFloat4Vec(image, width, height);
+    std::vector<std::vector<float4>> image2d = convertTo2dMatrix(image, width, height);
+/*
+    for (int i = 0; i < a.size; i++)
+    {
+        std::cout << "ByLINE r:" << a.data[i].x << "g:" << a.data[i].y << "b:" << a.data[i].z << "\n";
+        count++;
+    }
+    std::cout << count << "number of pixels \n";
+*/
+    float4* imagePointer = a.data;
 
-    cudaChannelFormatDesc channelDesc= cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindUnsigned);
+    /*
+    cudaChannelFormatDesc channelDesc= cudaCreateChannelDesc<float4>();
     cudaArray *cuArray;
     CUDA_CHECK(cudaMallocArray(&cuArray, &channelDesc, width, height));
 
     CUDA_CHECK(cudaMemcpyToArray(cuArray, 0, 0, imagePointer, size, cudaMemcpyHostToDevice));
+    */
+    //FloatArray floatImage = convertToFloatArray(image, width * 4, height);
 
-    cudaTextureObject_t tex;
-    cudaTextureObject_t* pointerToTex = &tex;
-    cudaResourceDesc texRes;
-    memset(&texRes, 0, sizeof(cudaResourceDesc));
+    float* floatImage;
+    floatImage = (float*)malloc(sizeof(float) * width * height *4);
+    size_t imagePos = 0;
+    for (size_t i = 0; i < (int)width * height *4; i++)
+    {
+        floatImage[i] = (float)(image[i]);
+    }
 
-    texRes.resType = cudaResourceTypeArray;
+    for (size_t i = 0; i < size; i += 4)
+    {
+        std::cout << "ByPixel r:" << floatImage[i] << "g:" << floatImage[i+1] << "b:" << floatImage[i+2] << "\n";
+    }
+
+    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
+    cudaArray *cuArray;
+    CUDA_CHECK(cudaMallocArray(&cuArray, &channelDesc, width *4, height));
+
+    const size_t spitch = width * 4 * sizeof(float);
+    CUDA_CHECK(cudaMemcpy2DToArray(cuArray, 0, 0, floatImage, spitch, width * 4 * sizeof(float), height, cudaMemcpyHostToDevice));
+
+    //CUDA_CHECK(cudaMemcpyToArray(cuArray, 0, 0, floatImage, size, cudaMemcpyHostToDevice));
+
+
+
+
     
-    texRes.res.array.array = cuArray;
-
     cudaTextureDesc texDescr;
-    memset(&texDescr, 0, sizeof(cudaTextureDesc));
-
-    texDescr.normalizedCoords = true;
-    texDescr.filterMode = cudaFilterModePoint;//  cudaFilterModeLinear;
+   // memset(&texDescr, 0, sizeof(cudaTextureDesc));
+    texDescr.normalizedCoords = 1;
+    texDescr.filterMode = cudaFilterModeLinear;
     texDescr.addressMode[0] = cudaAddressModeWrap;
     texDescr.addressMode[1] = cudaAddressModeWrap;
     texDescr.readMode = cudaReadModeElementType;
 
-    CUDA_CHECK(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
+    cudaResourceDesc texRes;
+    //memset(&texRes, 0, sizeof(cudaResourceDesc));
+    texRes.resType = cudaResourceTypeArray;    
+    texRes.res.array.array = cuArray;
 
-    std::vector<std::vector<float4>> image2d = convertTo2dMatrix(image, width, height);    
-    std::cout << "2d Array r:" << image2d[15][0].x << "g:" << image2d[15][0].y << "b:" << image2d[15][0].z << "\n";
+    //state.params.tex = 0;
+    //cudaTextureObject_t* localTex = (cudaTextureObject_t*) malloc(sizeof(cudaTextureObject_t));
+   // state.params.tex = new cudaTextureObject_t;
+
+    CUDA_CHECK(cudaCreateTextureObject(&state.params.tex, &texRes, &texDescr, NULL));
+    // = &tex;
+
+   // CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.tex), sizeof(float3)));
+    //CUDA_CHECK(cudaMemcpy(&state.params.tex, localTex, sizeof(cudaUserObject_t), cudaMemcpyHostToDevice));
+
+
+
+//    cudaThreadSynchronize();
+
+    //std::cout << "2d Array r:" << image2d[15][0].x << "g:" << image2d[15][0].y << "b:" << image2d[15][0].z << "\n";
 
     float3* tColor1Pointer = new float3(make_float3(image2d[15][0]));
     float3* tColor2Pointer = new float3(make_float3(0.01f, 0.01f, 0.9f));
 //    tColor1Pointer = 360 , 400
 //    tColor1Pointer = 
 
+   // float4 abc = tex2D<float4>(*params.texture, 18.0f, 18.0f);
+
+    //std::cout << abc.x << ;;
+    //std::cout << "texReturn r:" << abc.x << "g:" << abc.y << "b:" << abc.z << "\n";
+    //tex2d
+    //tex2D(*state.params.texture, 0.0f, 0.0f);
+
+
+
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.testColor1), sizeof(float3)));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.testColor2), sizeof(float3)));
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.texture), sizeof(cudaTextureObject_t*)));
-
+   // CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.tex), sizeof(cudaTextureObject_t)));
+    
     CUDA_CHECK(cudaMemcpy(state.params.testColor1, tColor1Pointer, sizeof(float3), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(state.params.testColor2, tColor2Pointer, sizeof(float3), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(state.params.texture, pointerToTex, sizeof(cudaTextureObject_t*), cudaMemcpyHostToDevice));
+ //   CUDA_CHECK(cudaMemcpy(state.params.tex, tex, sizeof(cudaTextureObject_t), cudaMemcpyHostToDevice));
 
-
-
-//    state.params.testColor1
-       // make_float3(0.4f, 0.4f, 0.4f)
-//    state.params.testColor2 = make_float3(0.01f, 0.01f, 0.8f);
     delete(tColor1Pointer);
     delete(tColor2Pointer);
-
-
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.accum_buffer),
-        state.params.width * state.params.height * sizeof(float4)));
-
 
     //TODO :: WE need to allocate memory onto the graphics card initially as the same size as the image we load onto device memory. 
     // so we allocate memory onto both host memory and device memory then copy over the details then use the device pointer as an launchParameter
@@ -418,8 +499,114 @@ void initlightfieldPparameters(CallableProgramsState& state)
      */
      
 
+         CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.accum_buffer),
+             state.params.width * state.params.height * sizeof(float4)));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.d_params), sizeof(whitted::LaunchParams)));
 }
+
+/*
+    TODO:
+        Look through new functions to remove unused bits, deallocate host side memory usage of textures once finished loading them
+        Look at not doubleing image array when processing on device 
+
+        Figure out bary-centric coordinates, or figure out how to get hit coordinates system another way.
+
+        Understand how records work to be able to create multiple lightfield at once
+
+        can we use normalized coordinates with barycentric coordinates to solve our problem?
+
+        Begin remembering/solving how to actually use interpolate our rays into the lightfield
+
+        add timer functions within texture loading to better communicate its not crashing
+
+        add ability for multiple lightfields,  work partly done by creating an array of textures and using the hit record to access them.
+        */
+
+void createTexObject(CallableProgramsState& state, const char* filename)
+{
+    int numOfTex = 1;
+    std::vector<unsigned char> image;
+
+    textureArrays.resize(1);
+    textureObjects.resize(1);
+
+    unsigned width;
+    unsigned height;
+
+    unsigned error = lodepng::decode(image, width, height, filename);
+    std::cout << "error:" << lodepng_error_text(error) << " || Image.length:" << image.size() << " || width: " << width << " height: " << height << "\n";
+
+    std::cout << "r:" << (unsigned)image[0] << "g:" << (unsigned)image[1] << "b:" << (unsigned)image[2] << "\n";
+
+    unsigned int size = width * height * sizeof(float) * 4;
+
+    int count = 0;
+    std::vector<std::vector<float4>> image2d = convertTo2dMatrix(image, width, height);
+    /*
+        for (int i = 0; i < a.size; i++)
+        {
+            std::cout << "ByLINE r:" << a.data[i].x << "g:" << a.data[i].y << "b:" << a.data[i].z << "\n";
+            count++;
+        }
+        std::cout << count << "number of pixels \n";
+    */
+
+    float* floatImage;
+    floatImage = (float*)malloc(sizeof(float) * width * height * 4);
+    size_t imagePos = 0;
+    for (size_t i = 0; i < (int)width * height * 4; i++)
+    {
+        floatImage[i] = (float)(image[i]);
+    }
+
+   // for (size_t i = 0; i < size; i += 4)
+    //{
+     //   std::cout << "ByPixel r:" << floatImage[i] << "g:" << floatImage[i + 1] << "b:" << floatImage[i + 2] << "\n";
+   // }
+
+    float4Array imageFloat4 = convertToFloat4Vec(image, width, height);
+    //float4* imagePointer = a.data;
+
+
+    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float4>(); //(32, 0, 0, 0, cudaChannelFormatKindFloat);
+    cudaArray_t &cuArray = textureArrays[0];
+    CUDA_CHECK(cudaMallocArray(&cuArray, &channelDesc, width, height));
+
+    const size_t spitch = width  * sizeof(float4);
+    CUDA_CHECK(cudaMemcpy2DToArray(cuArray, 0, 0, imageFloat4.data, spitch, width * sizeof(float4), height, cudaMemcpyHostToDevice));
+
+    //CUDA_CHECK(cudaMemcpyToArray(cuArray, 0, 0, floatImage, size, cudaMemcpyHostToDevice));
+
+    cudaTextureDesc texDescr;
+    memset(&texDescr, 0, sizeof(cudaTextureDesc));
+    texDescr.normalizedCoords = 0;
+    texDescr.filterMode = cudaFilterModeLinear;
+    texDescr.addressMode[0] = cudaAddressModeWrap;
+    texDescr.addressMode[1] = cudaAddressModeWrap;
+    texDescr.readMode = cudaReadModeElementType;
+
+    cudaResourceDesc texRes;
+    memset(&texRes, 0, sizeof(cudaResourceDesc));
+    texRes.resType = cudaResourceTypeArray;
+    texRes.res.array.array = cuArray;
+
+    cudaTextureObject_t tex = 0;
+    //cudaTextureObject_t* localTex = (cudaTextureObject_t*) malloc(sizeof(cudaTextureObject_t));
+   // state.params.tex = new cudaTextureObject_t;
+
+    CUDA_CHECK(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
+    textureObjects[0] = tex;
+
+   // CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.tex), sizeof(float3)));
+    //CUDA_CHECK(cudaMemcpy(&state.params.tex, localTex, sizeof(cudaUserObject_t), cudaMemcpyHostToDevice));
+
+
+
+
+}
+
+
+
 
 
 void initLaunchParams( CallableProgramsState& state )
@@ -776,7 +963,10 @@ void createSBT( CallableProgramsState& state )
         HitGroupRecord hitgroup_record;
         OPTIX_CHECK( optixSbtRecordPackHeader( state.hitgroup_prog_group, &hitgroup_record ) );
         hitgroup_record.data.color   = 2;
-
+        hitgroup_record.data.rgb = make_float3(0.0, 0.0, 255);
+        const char* fileName = "inputData/HugeMultiColor.png";
+        createTexObject(state, fileName); //MOVE THIS LATER
+        hitgroup_record.data.tex = textureObjects[0];
         CUdeviceptr d_hitgroup_record;
         size_t      sizeof_hitgroup_record = sizeof( HitGroupRecord );
         CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &d_hitgroup_record ), sizeof_hitgroup_record ) );
@@ -978,7 +1168,7 @@ int main( int argc, char* argv[] )
         createPipeline( state );
         createSBT( state );
 
-        initlightfieldPparameters(state);
+        //initlightfieldPparameters(state);
         initLaunchParams( state );
 
         //
