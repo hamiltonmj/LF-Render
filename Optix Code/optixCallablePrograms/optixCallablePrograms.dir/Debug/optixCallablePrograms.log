@@ -1,0 +1,24 @@
+﻿  optixCallablePrograms.cpp
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(246,63): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(247,69): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(252,63): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(253,69): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(259,50): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(260,56): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(267,50): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(268,56): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(274,56): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(275,62): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(280,56): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(281,62): warning C4244: 'argument': conversion from 'int' to 'const float', possible loss of data
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(357,12): warning C4189: 'imagePos': local variable is initialized but not referenced
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(433,12): warning C4189: 'imagePos': local variable is initialized but not referenced
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(409,9): warning C4189: 'count': local variable is initialized but not referenced
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(420,13): warning C4189: 'imagePointer': local variable is initialized but not referenced
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(578,12): warning C4189: 'imagePos': local variable is initialized but not referenced
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(573,9): warning C4189: 'count': local variable is initialized but not referenced
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(571,18): warning C4189: 'size': local variable is initialized but not referenced
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(727,28): warning C4101: 'gas_handle': unreferenced local variable
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(399): warning C4700: uninitialized local variable 'width' used
+C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\SDK\optixCallablePrograms\optixCallablePrograms.cpp(399): warning C4700: uninitialized local variable 'height' used
+  optixCallablePrograms.vcxproj -> C:\Users\hamil\OneDrive\Desktop\LightField Rendering\customOptixSDK\Optix7.4_Renderer\bin\Debug\optixCallablePrograms.exe
