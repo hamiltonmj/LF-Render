@@ -28,14 +28,7 @@
 
 #include <optix.h>
 #include <sutil/vec_math.h>
-//#include <stdio.h>
 
-/*
-    NOTE: Cant use whitted_cuda header file as the definition for params is already defined within it, this is a problem as 
-    we need to define custom params which mean we cant use the default whitted:launchParams, yet we need the name params
-    since some of the camera code IM assuming used it behind the scenes.
-
-*/
 #include <cuda/whitted_cuda.h>
 
 #include "whitted.h"
@@ -53,20 +46,87 @@ extern "C" __global__ void __closesthit__ch1()
     // attributes are provided by the OptiX API, indlucing barycentric coordinates.
     //const float2 barycentrics = optixGetTriangleBarycentrics();
     //printf( "woweee");
+    const HitGroupData hitData = *(const HitGroupData*)optixGetSbtDataPointer();
+    unsigned int w = hitData.texWidth;
+    unsigned int h = hitData.texHeight;
+
+    float2 uv = optixGetTriangleBarycentrics();
+
+    OptixTraversableHandle gas = optixGetGASTraversableHandle();
+    unsigned int index = optixGetPrimitiveIndex();
+    unsigned int sbtIndx = optixGetSbtGASIndex();
+    float time = optixGetRayTime();
+
+    float3 vertexData[3];
+    //optixGetGASTraversableHandle();
+    optixGetTriangleVertexData(gas, index, sbtIndx, time, vertexData);
     
 
-    if (optixGetPrimitiveIndex() == 0)
+    float3 ab = vertexData[1] - vertexData[0];
+    float3 ac = vertexData[2] - vertexData[0];
+    //printf("x: %4.5f , y: %4.5f, z: %4.5f    |||", vertexData[0].x , vertexData[0].y, vertexData[0].z);
+
+    float3 norm = normalize(cross(vertexData[1] - vertexData[0], vertexData[2] - vertexData[0]));
+    float3 dir = normalize(optixGetWorldRayDirection() - optixGetWorldRayOrigin());
+
+
+    // norm represents the first plane and we then use the plane projection formula to retrieve the sin(theta) of this 
+    //horizontal angle surface 
+    float dotNormDir = dot(normalize(vertexData[1] - vertexData[0]), dir);
+    dotNormDir = dotNormDir < 0 ? -dotNormDir : dotNormDir;
+    float cosTheta = dotNormDir / length(normalize(vertexData[1] - vertexData[0])) * length(dir);
+    //We repeat this process to create the vertical angle now using the (norm X plane direction) to create our plane
+    //vertical angle surface
+    float dotVerticalDir = dot(normalize(vertexData[2] - vertexData[0]), dir);
+    dotVerticalDir = dotVerticalDir < 0 ? -dotVerticalDir : dotVerticalDir;
+
+    float cosOmega = dotVerticalDir / length(normalize(vertexData[2] - vertexData[0])) * length(dir);
+
+    // printf("THETA: %2.5f \n", sinTheta);
+
+    float halfcosFOV = cos(hitData.fov / 2);
+
+    //0-1 value of the position within a hogel the pixel will take;
+    float lightFieldIndexX = (cosTheta + halfcosFOV)/ halfcosFOV*2;
+    float lightFieldIndexY = (cosOmega + halfcosFOV)/ halfcosFOV*2;
+
+    //This is the hogel we are working in.
+    float outPutPixelX = hitData.widthInHogel * uv.x;
+    float outPutPixelY = hitData.heightInHogels * uv.y;
+
+    //This is the position within a hogel an angle corresponds too.
+    float inHogelPosX = hitData.texWidth / hitData.widthInHogel * lightFieldIndexX;
+    float inHogelPosY = hitData.texHeight / hitData.heightInHogels * lightFieldIndexX;
+
+
+
+
+    if (cosOmega > -0.01 && cosOmega < 0.01)
     {
+        whitted::setPayloadResult(make_float3(0.01, 0.01, 0.01));
+        return;
+
+    }
+    if (cosTheta > -0.01 && cosTheta < 0.01)
+    {
+        whitted::setPayloadResult(make_float3(0.01, 0.01, 0.01));
+        return;
+    }
+
+    if (index == 0)
+    {
+
+        //length(norm)* length(dir);
         //make_float3(0.1f, 0.2f, 0.1f));
-        const HitGroupData hitData = *(const HitGroupData*)optixGetSbtDataPointer();
+
+       // cudaResourceDesc* texDesc;
+       // cudaGetTextureObjectResourceDesc(texDesc, hitData.tex)
 
         //Note each texture element is only 1 value of r|g|b|a in that order so 
         //to get the pixel at location 3,3 we actually need R -[3*4] G- [3*4 + 1] B- [3*4 + 2] A [3*4 + 3]
-        float locX = 5;
-        float locY = 5;
-        
+        float2 inverseUV = make_float2(1 - uv.x, 1 - uv.y);
 
-        float4 r = tex2D<float4>(hitData.tex, 15     , 15);
+        float4 r = tex2D<float4>(hitData.tex, w* inverseUV.x     , h * inverseUV.y);
         //unsigned char r = tex2D<float>(hitData.tex, 0, 0);
         //unsigned char g = tex2D<float>(hitData.tex, 0.5f / (80+1) , locY);
         //float b = (float) tex2D<float>(hitData.tex, 0.5f / (80 +2), locY);
@@ -82,7 +142,10 @@ extern "C" __global__ void __closesthit__ch1()
     }
     else
     {
-        whitted::setPayloadResult(make_float3(0.0f,0.0f,255.0f));
+        //float2 inverseUV = make_float2(1 - uv.x, 1 - uv.y);
+
+        float4 r = tex2D<float4>(hitData.tex, w * uv.x, h * uv.y);
+        whitted::setPayloadResult(make_float3(r.x, r.y, r.z));
     }
 }
 

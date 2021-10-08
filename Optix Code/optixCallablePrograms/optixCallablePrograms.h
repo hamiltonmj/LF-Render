@@ -29,6 +29,7 @@
 #pragma once
 #include <cuda/whitted.h>
 
+
 struct EmptyData
 {
 };
@@ -36,9 +37,17 @@ struct EmptyData
 struct HitGroupData 
 {
     unsigned int color;
-    float3 rgb;
+    unsigned int texWidth;
+    unsigned int texHeight;
+
+    unsigned int widthInHogel;
+    unsigned int heightInHogels;
+    float fov;
+
     cudaTextureObject_t tex;
 };
+
+
 
 
 struct float4Array

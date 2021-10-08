@@ -57,14 +57,39 @@
 
 #include "optixCallablePrograms.h"
 
+#include <fstream>
+
+
+
+struct Config
+{
+    std::string imageName;
+    unsigned int widthInHogels = 1;
+    unsigned int heightInHogels = 1;
+    float fov;
+    unsigned int lightFieldWorldWidth;
+    unsigned int lightFieldWorldHeight;
+
+};
+
 //------------------------------------------------------------------------------
 //
 // Globals
 //
 //------------------------------------------------------------------------------
 
+
+
+
+
+Config config = Config();
+
+//Can eventually convert all these seperate vectors into a vector of a struct containing this info
 std::vector<cudaArray_t>         textureArrays;
 std::vector<cudaTextureObject_t> textureObjects;
+
+std::vector<unsigned int>         textureWidths;
+std::vector<unsigned int>         textureHeights;
 
 bool resize_dirty = false;
 bool minimized    = false;
@@ -186,8 +211,8 @@ static void windowIconifyCallback( GLFWwindow* window, int32_t iconified )
     minimized = ( iconified > 0 );
 }
 
-
-static void keyCallback( GLFWwindow* window, int32_t key, int32_t /*scancode*/, int32_t action, int32_t /*mods*/ )
+int shifted = 1;
+static void keyCallback( GLFWwindow* window, int32_t key, int32_t /*scancode*/, int32_t action, int32_t mods )
 {
     if(key == GLFW_KEY_ESCAPE )
     {
@@ -202,50 +227,58 @@ static void keyCallback( GLFWwindow* window, int32_t key, int32_t /*scancode*/, 
         dc_index        = ( dc_index + 1 ) % 3;
     }
 
-
-    //Camera Movement Keys
-    //else
+    /*
+    if (mods == GLFW_MOD_SHIFT)
+    {
+        shifted = 2;
+    }
+    else
+    {
+        shifted = 1;
+    }
+    */
+    int moveRatio = 10  * shifted;
     {
         switch (key)
         {
         //Forward
         case GLFW_KEY_W:
-            camera.setEye(camera.eye() + camera.direction() / 10);
-            camera.setLookat(camera.lookat() + camera.direction() / 10);
+            camera.setEye(camera.eye() + camera.direction() / moveRatio);
+            camera.setLookat(camera.lookat() + camera.direction() / moveRatio);
             camera_changed = true;
             break;
         //Backwards
         case GLFW_KEY_S:
-            camera.setEye(camera.eye() - camera.direction() / 10);
-            camera.setLookat(camera.lookat() - camera.direction() / 10);
+            camera.setEye(camera.eye() - camera.direction() / moveRatio);
+            camera.setLookat(camera.lookat() - camera.direction() / moveRatio);
             camera_changed = true;
             break;
         //Left
         case GLFW_KEY_A:
             float3 right = normalize(cross(camera.direction(), camera.up()));
-            camera.setEye(camera.eye() - right / 10);
-            camera.setLookat(camera.lookat() - right / 10);
+            camera.setEye(camera.eye() - right / moveRatio);
+            camera.setLookat(camera.lookat() - right / moveRatio);
             camera_changed = true;
             break;
         //Right
         case GLFW_KEY_D:
         {
             float3 right = normalize(cross(camera.direction(), camera.up())); 
-            camera.setEye(camera.eye() + right / 10);
-            camera.setLookat(camera.lookat() + right / 10);
+            camera.setEye(camera.eye() + right / moveRatio);
+            camera.setLookat(camera.lookat() + right / moveRatio);
             camera_changed = true;
             break;
         }
         //Up
         case GLFW_KEY_E:
-            camera.setEye(camera.eye() + camera.up() / 10);
-            camera.setLookat(camera.lookat() + camera.up() / 10);
+            camera.setEye(camera.eye() + camera.up() / moveRatio);
+            camera.setLookat(camera.lookat() + camera.up() / moveRatio);
             camera_changed = true;
             break;
         //Down
         case GLFW_KEY_Q:
-            camera.setEye(camera.eye() - camera.up() / 10);
-            camera.setLookat(camera.lookat() - camera.up() / 10);
+            camera.setEye(camera.eye() - camera.up() / moveRatio);
+            camera.setLookat(camera.lookat() - camera.up() / moveRatio);
             camera_changed = true;
             break;
 
@@ -253,28 +286,6 @@ static void keyCallback( GLFWwindow* window, int32_t key, int32_t /*scancode*/, 
             break;
         }
     }
-    /*  
-    else if (key == GLFW_KEY_W)
-    {
-    }
-    //Backward
-    else if (key == GLFW_KEY_S)
-    {
-    std::cout << "WOW";
-    camera.setEye(camera.eye() - camera.direction() / 10);
-    camera_changed = true;
-    }
-    else if (key == GLFW_KEY_S)
-    {
-    std::cout << "WOW";
-    camera.setEye(camera.eye() - camera.direction() / 10);
-    camera_changed = true;
-    }
-
-
-    }
-    //Forward
-*/
 }
 
 
@@ -352,6 +363,25 @@ FloatArray convertToFloatArray(const std::vector<unsigned char>& image, unsigned
 }
 
 
+void setConfig(std::string fileName)
+{
+    std::ifstream file;
+    file.open(fileName);
+    if (!file.is_open())
+    {
+        std::cout <<"Error Opening config\n";
+        exit(-1);
+    }
+    std::string ab;
+   // const char a[];
+    file >> config.imageName >> config.widthInHogels >> config.heightInHogels >> config.fov;
+
+    //std::strcpy(config.imageName, ab.c_str());
+    //config.imageName = new const char[ab.size()];
+
+    std::cout << config.imageName << "   HIOGHAWIGHIOAWHGIAHWGHW(Ag\n";
+}
+
 void initlightfieldPparameters(CallableProgramsState& state)
 {
 
@@ -359,10 +389,10 @@ void initlightfieldPparameters(CallableProgramsState& state)
     std::vector<unsigned char> image;
     unsigned width;
     unsigned height;
-    const char* filename = "inputData/RGB.png";
+    //const char* filename = "inputData/HugeMultiColor.png";
 
-    unsigned error = lodepng::decode(image, width, height, filename);
-    std::cout << "error:" << lodepng_error_text(error) <<" || Image.length:" << image.size() << " || width: " << width << " height: " << height << "\n";
+   // unsigned error = lodepng::decode(image, width, height, filename);
+    //std::cout << "error:" << lodepng_error_text(error) <<" || Image.length:" << image.size() << " || width: " << width << " height: " << height << "\n";
 
     std::cout << "r:" <<(unsigned) image[0] << "g:" << (unsigned)image[1] << "b:" << (unsigned)image[2] << "\n";
 
@@ -527,29 +557,21 @@ void createTexObject(CallableProgramsState& state, const char* filename)
     int numOfTex = 1;
     std::vector<unsigned char> image;
 
-    textureArrays.resize(1);
-    textureObjects.resize(1);
+    textureArrays.resize(textureArrays.size() + numOfTex);
+    textureObjects.resize(textureObjects.size() + numOfTex);
+    textureWidths.resize(textureWidths.size() + numOfTex);
+    textureHeights.resize(textureHeights.size() + numOfTex);
 
     unsigned width;
     unsigned height;
-
+    std::cout << filename << "   :FILENAME\n";
     unsigned error = lodepng::decode(image, width, height, filename);
     std::cout << "error:" << lodepng_error_text(error) << " || Image.length:" << image.size() << " || width: " << width << " height: " << height << "\n";
-
-    std::cout << "r:" << (unsigned)image[0] << "g:" << (unsigned)image[1] << "b:" << (unsigned)image[2] << "\n";
 
     unsigned int size = width * height * sizeof(float) * 4;
 
     int count = 0;
     std::vector<std::vector<float4>> image2d = convertTo2dMatrix(image, width, height);
-    /*
-        for (int i = 0; i < a.size; i++)
-        {
-            std::cout << "ByLINE r:" << a.data[i].x << "g:" << a.data[i].y << "b:" << a.data[i].z << "\n";
-            count++;
-        }
-        std::cout << count << "number of pixels \n";
-    */
 
     float* floatImage;
     floatImage = (float*)malloc(sizeof(float) * width * height * 4);
@@ -565,8 +587,6 @@ void createTexObject(CallableProgramsState& state, const char* filename)
    // }
 
     float4Array imageFloat4 = convertToFloat4Vec(image, width, height);
-    //float4* imagePointer = a.data;
-
 
     cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float4>(); //(32, 0, 0, 0, cudaChannelFormatKindFloat);
     cudaArray_t &cuArray = textureArrays[0];
@@ -591,18 +611,11 @@ void createTexObject(CallableProgramsState& state, const char* filename)
     texRes.res.array.array = cuArray;
 
     cudaTextureObject_t tex = 0;
-    //cudaTextureObject_t* localTex = (cudaTextureObject_t*) malloc(sizeof(cudaTextureObject_t));
-   // state.params.tex = new cudaTextureObject_t;
 
     CUDA_CHECK(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
     textureObjects[0] = tex;
-
-   // CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&state.params.tex), sizeof(float3)));
-    //CUDA_CHECK(cudaMemcpy(&state.params.tex, localTex, sizeof(cudaUserObject_t), cudaMemcpyHostToDevice));
-
-
-
-
+    textureWidths[0] = width;
+    textureHeights[0] = height;
 }
 
 
@@ -717,7 +730,7 @@ void createGeometry( CallableProgramsState& state )
         // Use default options for simplicity.  In a real use case we would want to
         // enable compaction, etc
         OptixAccelBuildOptions accel_options = {};
-        accel_options.buildFlags = OPTIX_BUILD_FLAG_NONE;
+        accel_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_RANDOM_VERTEX_ACCESS;
         accel_options.operation = OPTIX_BUILD_OPERATION_BUILD;
 
 
@@ -732,9 +745,9 @@ void createGeometry( CallableProgramsState& state )
               {  0.5f, -0.5f, 0.0f },
               { -0.5f,  0.5f, 0.0f },
 
-              {  0.5f,   0.5f, 0.0f },
-              {  0.5f, -0.5f, 0.0f },
-              { -0.5f,  0.5f, 0.0f }
+              {  0.5f,  0.5f, 0.0f },
+              { -0.5f,  0.5f, 0.0f },
+              {  0.5f, -0.5f, 0.0f }
         } };
 
         const size_t vertices_size = sizeof(float3) * vertices.size();
@@ -963,10 +976,18 @@ void createSBT( CallableProgramsState& state )
         HitGroupRecord hitgroup_record;
         OPTIX_CHECK( optixSbtRecordPackHeader( state.hitgroup_prog_group, &hitgroup_record ) );
         hitgroup_record.data.color   = 2;
-        hitgroup_record.data.rgb = make_float3(0.0, 0.0, 255);
-        const char* fileName = "inputData/HugeMultiColor.png";
-        createTexObject(state, fileName); //MOVE THIS LATER
+
+        
+        createTexObject(state, config.imageName.c_str()); //MOVE THIS LATER
+
+        hitgroup_record.data.widthInHogel = config.widthInHogels;
+        hitgroup_record.data.heightInHogels = config.heightInHogels;
+        hitgroup_record.data.fov = config.fov;
+        hitgroup_record.data.texWidth = textureWidths[0];
+        hitgroup_record.data.texHeight = textureHeights[0];
         hitgroup_record.data.tex = textureObjects[0];
+
+
         CUdeviceptr d_hitgroup_record;
         size_t      sizeof_hitgroup_record = sizeof( HitGroupRecord );
         CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &d_hitgroup_record ), sizeof_hitgroup_record ) );
@@ -1159,6 +1180,8 @@ int main( int argc, char* argv[] )
     try
     {
         initCameraState();
+
+        setConfig("Config.txt");
 
         //
         // Set up OptiX state
