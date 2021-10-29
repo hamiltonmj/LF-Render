@@ -600,7 +600,7 @@ void createTexObject(CallableProgramsState& state, const char* filename)
     cudaTextureDesc texDescr;
     memset(&texDescr, 0, sizeof(cudaTextureDesc));
     texDescr.normalizedCoords = 0;
-    texDescr.filterMode = cudaFilterModeLinear;
+    texDescr.filterMode = cudaFilterModePoint;
     texDescr.addressMode[0] = cudaAddressModeWrap;
     texDescr.addressMode[1] = cudaAddressModeWrap;
     texDescr.readMode = cudaReadModeElementType;
@@ -614,6 +614,8 @@ void createTexObject(CallableProgramsState& state, const char* filename)
 
     CUDA_CHECK(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
     textureObjects[0] = tex;
+
+std::cout << width << "          GSEGSEGSEGSEG\n";
     textureWidths[0] = width;
     textureHeights[0] = height;
 }
@@ -987,6 +989,7 @@ void createSBT( CallableProgramsState& state )
         hitgroup_record.data.texHeight = textureHeights[0];
         hitgroup_record.data.tex = textureObjects[0];
 
+        std::cout << hitgroup_record.data.texWidth << "          GSEGSEGSEGSEG\n";
 
         CUdeviceptr d_hitgroup_record;
         size_t      sizeof_hitgroup_record = sizeof( HitGroupRecord );
@@ -1027,7 +1030,7 @@ void createContext( CallableProgramsState& state )
 
 void initCameraState()
 {
-    camera.setEye( make_float3( 0.0f, 0.0f, -3.0f ) );
+    camera.setEye( make_float3( 0.0f, 0.0f, 3.0f ) );
     camera.setLookat( make_float3( 0.0f, 0.0f, 0.0f ) );
     camera.setUp( make_float3( 0.0f, 1.0f, 0.0f ) );
     camera.setFovY( 60.0f );
@@ -1199,7 +1202,7 @@ int main( int argc, char* argv[] )
         //
         if( outfile.empty() )
         {
-            GLFWwindow* window = sutil::initUI( "optixCallablePrograms", state.params.width, state.params.height );
+            GLFWwindow* window = sutil::initUI( "Real Time Lightfield Render", state.params.width, state.params.height );
             glfwSetMouseButtonCallback( window, mouseButtonCallback );
             glfwSetCursorPosCallback( window, cursorPosCallback );
             glfwSetWindowSizeCallback( window, windowSizeCallback );

@@ -44,6 +44,7 @@ struct HitGroupData
     unsigned int heightInHogels;
     float fov;
 
+    float* horizontalHogels;
     cudaTextureObject_t tex;
 };
 
