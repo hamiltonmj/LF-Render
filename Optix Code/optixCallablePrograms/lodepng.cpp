@@ -355,7 +355,10 @@ static long lodepng_filesize(const char* filename) {
 
   size = ftell(file);
   /* It may give LONG_MAX as directory size, this is invalid for us. */
-  if(size == LONG_MAX) size = -1;
+  if (size == LONG_MAX)
+  {
+      size = -1;
+  }
 
   fclose(file);
   return size;
@@ -6308,7 +6311,6 @@ namespace lodepng {
 #ifdef LODEPNG_COMPILE_DISK
 unsigned load_file(std::vector<unsigned char>& buffer, const std::string& filename) {
   long size = lodepng_filesize(filename.c_str());
-  if(size < 0) return 78;
   buffer.resize((size_t)size);
   return size == 0 ? 0 : lodepng_buffer_file(&buffer[0], (size_t)size, filename.c_str());
 }
