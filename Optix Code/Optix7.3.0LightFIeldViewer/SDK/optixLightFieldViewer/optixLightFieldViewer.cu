@@ -35,6 +35,7 @@
 #include "optixLightFieldViewer.h"
 
 
+
 extern "C" {
     __constant__ whitted::LaunchParams params;
 }
@@ -80,9 +81,10 @@ extern "C" __global__ void __closesthit__ch1()
     float texPosY = ((HogelY * pixelsPerHogelY) + inHogelPosY);
 
    if (hitData.texHeight != hitData.heightInHogels) { texPosY = hitData.texHeight - texPosY; }
-//    texPosY = (hitData.texHeight == hitData.heightInHogels) ? texPosY : hitData.texHeight - texPosY;
-    float4 r = tex2D<float4>(hitData.tex, texPosX, texPosY);
-    whitted::setPayloadResult(make_float3(r.x, r.y, r.z));
+
+   uchar4 color = tex2D<uchar4>(hitData.tex, texPosX, texPosY);
+   //Converts image pixel values into floats then divides them by 255 to properly represent colors
+   whitted::setPayloadResult(make_float3((float)color.z/255, (float)color.y/255, (float)color.x / 255));
 }
 
 // Miss
@@ -95,5 +97,5 @@ extern "C" __global__ void __miss__raydir_shade()
     //float3 result = //optixContinuationCall<float3, float3>( 0, ray_dir );
 
 
-    whitted::setPayloadResult(make_float3(0.001f, 0.0f, 0.0f));
+    whitted::setPayloadResult(make_float3(0.0f, 0.0f, 0.0f));
 }

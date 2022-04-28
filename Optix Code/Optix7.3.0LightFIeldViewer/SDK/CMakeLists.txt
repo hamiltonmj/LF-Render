@@ -243,6 +243,19 @@ include_directories(
 # Select whether to use NVRTC or NVCC to generate PTX
 set(CUDA_NVRTC_ENABLED ON CACHE BOOL "Use NVRTC to compile PTX at run-time instead of NVCC at build-time")
 
+###################################################################
+#CMake Include
+# Also need to define both these environment variables in order to run 
+# OPENCV_IO_MAX_IMAGE_PIXELS : 1850000000000
+# Add To PATH : .../lib/OpenCV/x64/vc15/bin
+
+set(OpenCV_DIR "${CMAKE_SOURCE_DIR}/lib/OpenCV")
+find_package( OpenCV REQUIRED)
+
+include_directories(${OpenCV_INCLUDE_DIRS})
+
+link_directories(${OpenCV_LIB_DIR})
+
 ##################################################################
 # SUtil compilation
 
@@ -353,6 +366,7 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
     ${GLFW_LIB_NAME}
     imgui
     sutil_7_sdk
+    ${OpenCV_LIBS}
     )
 
   set_target_properties( ${target_name} PROPERTIES

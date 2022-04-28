@@ -28,7 +28,10 @@
 
 #include <glad/glad.h>  // Needs to be included before gl_interop
 
-#include "lodepng.h"
+#include "opencv2/core.hpp" 
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv2/opencv.hpp"
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
@@ -59,8 +62,6 @@
 
 #include <fstream>
 
-
-
 struct Config
 {
     std::string imageName;
@@ -77,11 +78,6 @@ struct Config
 // Globals
 //
 //------------------------------------------------------------------------------
-
-
-
-
-
 Config config = Config();
 
 //Can eventually convert all these seperate vectors into a vector of a struct containing this info
@@ -111,7 +107,6 @@ int32_t mouse_button = -1;
 // Local types
 //
 //------------------------------------------------------------------------------
-
 template <typename T>
 struct Record
 {
@@ -302,25 +297,6 @@ void printUsageAndExit( const char* argv0 )
     exit( 0 );
 }
 
-float4Array convertToFloat4Vec(const std::vector<unsigned char>& image, unsigned width, unsigned height)
-{
-    float4Array outImage;
-    outImage.data = new float4[width * height];
-    outImage.size = width * height;
-  //  std::vector<float4> outImage((int)width * height, float4());
-    size_t imagePos = 0;
-    for (size_t i = 0; i < (int)width * height; i++)
-    {
-            outImage.data[i].x = (float)image[imagePos] / 255;
-            outImage.data[i].y = (float)image[imagePos + 1] / 255;
-            outImage.data[i].z = (float)image[imagePos + 2] / 255;
-            outImage.data[i].w = (float)image[imagePos + 3] / 255;
-
-            imagePos += 4;
-    }
-    return outImage;
-}
-
 void setConfig(std::string fileName)
 {
     std::ifstream file;
@@ -344,38 +320,65 @@ void createTexObject(CallableProgramsState& state, const char* filename)
     textureWidths.resize(textureWidths.size() + numOfTex);
     textureHeights.resize(textureHeights.size() + numOfTex);
 
-    unsigned width;
-    unsigned height;
-    std::cout << filename << "   :FILENAME\n";
+    std::cout << "Attempting to load Image: "<< filename <<"\n";
 
-    unsigned error = lodepng::decode(image, width, height, filename);
-    std::cout << "error:" << lodepng_error_text(error) << " || Image.length:" << image.size() << " || width: " << width << " height: " << height << "\n";
+    cv::Mat image1 = cv::imread(filename, cv::IMREAD_UNCHANGED);
+    if (image1.empty())
+    {
+        std::cout << "Error: Failed to load image - " << filename << "\n";
+        exit;
+    }
+    //Cuda textures need 4 channels, so if image does not have them we add an alpha channel
+    if (image1.channels() != 4)
+    {
+        std::cout << "Warning: Invalid Number of Image Channels, attempting to convert RGB to RGBA \n";
+        cv::cvtColor(image1, image1, cv::COLOR_BGR2BGRA);
+    }
 
-    float4Array imageFloat4 = convertToFloat4Vec(image, width, height);
+    std::cout << "Succesfully loaded: " << filename << "\n";
 
-    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<float4>();
+    unsigned width = image1.cols;
+    unsigned height = image1.rows;
+
+    //Desribes how cuda should iterpret the array its being given
+    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<uchar4>();
+
+    //Assigns the image to the first texture object within the simulator
+    //Currently thhis is not utilized well, but if more lihgt fields are 
+    //rednered at once this will be used
     cudaArray_t &cuArray = textureArrays[0];
+
+    //Allocate Array on gpu in the same shape as described by the channel descriptor
     CUDA_CHECK(cudaMallocArray(&cuArray, &channelDesc, width, height));
 
-    const size_t spitch = width  * sizeof(float4);
-    CUDA_CHECK(cudaMemcpy2DToArray(cuArray, 0, 0, imageFloat4.data, spitch, width * sizeof(float4), height, cudaMemcpyHostToDevice));
+    //Describes the width of the 2D array, in terms of a 1d array
+    const size_t spitch = width  * sizeof(uchar4);
 
+    //Copies the data on ram into vram, in the format generated above
+    CUDA_CHECK(cudaMemcpy2DToArray(cuArray, 0, 0, image1.data, spitch, width * sizeof(uchar4), height, cudaMemcpyHostToDevice));
+    
+    //Describes how cuda should operate on the texture within the gpu
     cudaTextureDesc texDescr;
     memset(&texDescr, 0, sizeof(cudaTextureDesc));
     texDescr.normalizedCoords = 0;
-    texDescr.filterMode = cudaFilterModeLinear;
+    texDescr.filterMode = cudaFilterModePoint; //cudaFilterModeLinear;
     texDescr.addressMode[0] = cudaAddressModeWrap;
     texDescr.addressMode[1] = cudaAddressModeWrap;
-    texDescr.readMode = cudaReadModeElementType;
+    texDescr.readMode = cudaReadModeElementType;//cudaReadModeNormalizedFloat;
 
+    //Describes how the texture should recognise the array it holds
     cudaResourceDesc texRes;
     memset(&texRes, 0, sizeof(cudaResourceDesc));
     texRes.resType = cudaResourceTypeArray;
     texRes.res.array.array = cuArray;
-
+    
+    //Create a blank texture object to be assigned 
     cudaTextureObject_t tex = 0;
 
+    //Assign the texture object all the produced properties
     CUDA_CHECK(cudaCreateTextureObject(&tex, &texRes, &texDescr, NULL));
+
+    // Store the textrue information within the program
     textureObjects[0] = tex;
     textureWidths[0] = width;
     textureHeights[0] = height;
@@ -383,7 +386,7 @@ void createTexObject(CallableProgramsState& state, const char* filename)
 
 void initLaunchParams( CallableProgramsState& state )
 {
-    CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &state.params.accum_buffer ),
+    CUDA_CHECK(cudaMalloc( reinterpret_cast<void**>( &state.params.accum_buffer ),
                             state.params.width * state.params.height * sizeof( float4 ) ) );
     state.params.frame_buffer = nullptr;  // Will be set when output buffer is mapped
 
@@ -717,8 +720,6 @@ void createSBT( CallableProgramsState& state )
         hitgroup_record.data.texWidth = textureWidths[0];
         hitgroup_record.data.texHeight = textureHeights[0];
         hitgroup_record.data.tex = textureObjects[0];
-
-        std::cout << hitgroup_record.data.texWidth << "          GSEGSEGSEGSEG\n";
 
         CUdeviceptr d_hitgroup_record;
         size_t      sizeof_hitgroup_record = sizeof( HitGroupRecord );
