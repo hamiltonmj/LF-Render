@@ -30,8 +30,7 @@ OPTIX_add_sample_executable( optixLightFieldViewer target_name
   optixLightFieldViewer.cpp
   optixLightFieldViewer.cu
   optixLightFieldViewer.h
-  lodepng.cpp	
-  lodepng.h
+
   OPTIONS -rdc true
   )
 
