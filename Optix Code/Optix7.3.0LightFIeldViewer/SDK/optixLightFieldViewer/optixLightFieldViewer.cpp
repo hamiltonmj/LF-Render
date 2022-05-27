@@ -56,6 +56,11 @@
 #include <cstring>
 #include <iomanip>
 
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
+
+
 #include <cuda/whitted.h>
 
 #include "optixLightFieldViewer.h"
@@ -89,6 +94,9 @@ std::vector<unsigned int>         textureHeights;
 
 bool resize_dirty = false;
 bool minimized    = false;
+
+//image matrix
+cv::Mat image1;
 
 // Camera state
 bool             camera_changed = true;
@@ -152,15 +160,19 @@ static void mouseButtonCallback( GLFWwindow* window, int button, int action, int
 {
     double xpos, ypos;
     glfwGetCursorPos( window, &xpos, &ypos );
+    
+    //checks ImGui is using mouse or not
+    if (!sutil::Get_is_ImGuiActive()) {
+        if (action == GLFW_PRESS)
+        {
+            mouse_button = button;
+            trackball.startTracking(static_cast<int>(xpos), static_cast<int>(ypos));
+        }
 
-    if( action == GLFW_PRESS )
-    {
-        mouse_button = button;
-        trackball.startTracking( static_cast<int>( xpos ), static_cast<int>( ypos ) );
-    }
-    else
-    {
-        mouse_button = -1;
+        else
+        {
+            mouse_button = -1;
+        }
     }
 }
 
@@ -168,19 +180,24 @@ static void mouseButtonCallback( GLFWwindow* window, int button, int action, int
 static void cursorPosCallback( GLFWwindow* window, double xpos, double ypos )
 {
    whitted::LaunchParams* params = static_cast<whitted::LaunchParams*>( glfwGetWindowUserPointer( window ) );
+  
+   //checks ImGui is using mouse or not
+   if (!sutil::Get_is_ImGuiActive()) {
+       if (mouse_button == GLFW_MOUSE_BUTTON_LEFT)
+       {
+           trackball.setViewMode(sutil::Trackball::LookAtFixed);
+           trackball.updateTracking(static_cast<int>(xpos), static_cast<int>(ypos), params->width, params->height);
+           camera_changed = true;
+       }
 
-    if( mouse_button == GLFW_MOUSE_BUTTON_LEFT )
-    {
-        trackball.setViewMode( sutil::Trackball::LookAtFixed );
-        trackball.updateTracking( static_cast<int>( xpos ), static_cast<int>( ypos ), params->width, params->height );
-        camera_changed = true;
-    }
-    else if( mouse_button == GLFW_MOUSE_BUTTON_RIGHT )
-    {
-        trackball.setViewMode( sutil::Trackball::EyeFixed );
-        trackball.updateTracking( static_cast<int>( xpos ), static_cast<int>( ypos ), params->width, params->height );
-        camera_changed = true;
-    }
+       else if (mouse_button == GLFW_MOUSE_BUTTON_RIGHT)
+       {
+           trackball.setViewMode(sutil::Trackball::EyeFixed);
+           trackball.updateTracking(static_cast<int>(xpos), static_cast<int>(ypos), params->width, params->height);
+           camera_changed = true;
+       }
+   }
+   
 }
 
 
@@ -297,21 +314,67 @@ void printUsageAndExit( const char* argv0 )
     exit( 0 );
 }
 
+//return true if fileName has .txt file extension
+bool is_textFile(std::string fileName)
+{
+    std::size_t found = fileName.find("txt");
+    if (found != std::string::npos)
+    {
+        std::string fileExtension = fileName.substr(found, fileName.length());
+
+        if (fileExtension == "txt") {
+            return true;
+        }
+    }
+    else return false;
+}
+
+
+void load_Image(std::string fileName)
+{
+    std::cout << fileName << " :Reading\n";
+    std::cout << "Attempting to load Image: " << config.imageName << "\n";
+    image1 = cv::imread(fileName, cv::IMREAD_UNCHANGED);
+    if (image1.empty())
+    {
+        std::cout << "Error: Failed to load image - " << fileName << "\n";
+        exit;
+    }
+}
+
+
 void setConfig(std::string fileName)
 {
-    std::ifstream file;
-    file.open(fileName);
-    if (!file.is_open())
-    {
-        std::cout <<"Error Opening config\n";
-        exit(-1);
+    //if file selected is .txt file, then directly load the file.
+    
+    if (is_textFile(fileName)) {
+        std::ifstream file;
+        file.open(fileName);
+        if (!file.is_open())
+        {
+            std::cout << "Error Opening config\n";
+            exit(-1);
+        }
+
+        file >> config.imageName >> config.widthInHogels >> config.heightInHogels >> config.fov;
+        load_Image(config.imageName);
     }
-    file >> config.imageName >> config.widthInHogels >> config.heightInHogels >> config.fov;
-    std::cout << config.imageName << " :Reading\n";
+    else {
+        load_Image(fileName);
+        config.imageName = fileName;
+        config.widthInHogels = image1.cols;
+        config.heightInHogels = image1.rows;
+        config.fov = 180;
+
+    }
+
+
 }
+
 
 void createTexObject(CallableProgramsState& state, const char* filename)
 {
+    
     int numOfTex = 1;
     std::vector<unsigned char> image;
 
@@ -320,14 +383,10 @@ void createTexObject(CallableProgramsState& state, const char* filename)
     textureWidths.resize(textureWidths.size() + numOfTex);
     textureHeights.resize(textureHeights.size() + numOfTex);
 
-    std::cout << "Attempting to load Image: "<< filename <<"\n";
+    
 
-    cv::Mat image1 = cv::imread(filename, cv::IMREAD_UNCHANGED);
-    if (image1.empty())
-    {
-        std::cout << "Error: Failed to load image - " << filename << "\n";
-        exit;
-    }
+
+
     //Cuda textures need 4 channels, so if image does not have them we add an alpha channel
     if (image1.channels() != 4)
     {
@@ -908,8 +967,8 @@ int main( int argc, char* argv[] )
     {
         initCameraState();
 
+       // setConfig("Config.txt");
         setConfig("Config.txt");
-
         //
         // Set up OptiX state
         //
@@ -926,13 +985,15 @@ int main( int argc, char* argv[] )
         if( outfile.empty() )
         {
             GLFWwindow* window = sutil::initUI( "Real Time Lightfield Render", state.params.width, state.params.height );
-            glfwSetMouseButtonCallback( window, mouseButtonCallback );
-            glfwSetCursorPosCallback( window, cursorPosCallback );
-            glfwSetWindowSizeCallback( window, windowSizeCallback );
-            glfwSetWindowIconifyCallback( window, windowIconifyCallback );
-            glfwSetKeyCallback( window, keyCallback );
-            glfwSetScrollCallback( window, scrollCallback );
-            glfwSetWindowUserPointer( window, &state.params );
+           
+                glfwSetCursorPosCallback(window, cursorPosCallback);
+                glfwSetMouseButtonCallback(window, mouseButtonCallback);
+                glfwSetWindowSizeCallback(window, windowSizeCallback);
+                glfwSetWindowIconifyCallback(window, windowIconifyCallback);
+                glfwSetKeyCallback(window, keyCallback);
+                glfwSetScrollCallback(window, scrollCallback);
+                glfwSetWindowUserPointer(window, &state.params);
+
 
             {
                 // output_buffer needs to be destroyed before cleanupUI is called
@@ -947,9 +1008,11 @@ int main( int argc, char* argv[] )
 
                 do
                 {
-                    auto t0 = std::chrono::steady_clock::now();
-                    glfwPollEvents();
 
+                    auto t0 = std::chrono::steady_clock::now();
+                    
+                    glfwPollEvents();
+             
                     updateState( output_buffer, state );
                     auto t1 = std::chrono::steady_clock::now();
                     state_update_time += t1 - t0;
@@ -963,15 +1026,36 @@ int main( int argc, char* argv[] )
                     displaySubframe( output_buffer, gl_display, window );
                     t1 = std::chrono::steady_clock::now();
                     display_time += t1 - t0;
-
+                   
                     sutil::displayStats( state_update_time, render_time, display_time );
 
+                    
+                    bool changeState = sutil::getChangeState();
+                    
+                    if (changeState) 
+                    {
+                        std::string filePath = sutil::getCurrFilename();
+                        setConfig(filePath);
+
+                        createSBT(state);
+                        initLaunchParams(state);
+
+                    }
+                  
+                    
                     glfwSwapBuffers( window );
 
+                   
+
                     ++state.params.subframe_index;
+                    
+
+                    
                 } while( !glfwWindowShouldClose( window ) );
             }
             sutil::cleanupUI( window );
+            
+            
         }
         else
         {
