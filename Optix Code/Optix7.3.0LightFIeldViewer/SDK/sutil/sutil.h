@@ -114,6 +114,20 @@ SUTILAPI void displayStats( std::chrono::duration<double>& state_update_time,
                             std::chrono::duration<double>& render_time,
                             std::chrono::duration<double>& display_time );
 
+//get filename loaded
+SUTILAPI std::string getCurrFilename();
+
+//get change image in run time state
+SUTILAPI bool getChangeState();
+
+//get param of image in run time state
+SUTILAPI int* getDem();
+
+//return true if file is a txt file.
+SUTILAPI bool getIs_textFile();
+
+SUTILAPI bool Get_is_ImGuiActive();
+
 // Display a short string starting at x,y.
 SUTILAPI void displayText( const char* text, float x, float y );
 

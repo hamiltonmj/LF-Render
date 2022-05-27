@@ -34,11 +34,23 @@
 #include <sutil/sutil.h>
 #include <sutil/vec_math.h>
 
+
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
 #include <imgui/imgui.h>
+#include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
+
+#include "sutil/ImGuiFileBrowser.h"
+
+imgui_addons::ImGuiFileBrowser file_dialog;
+
+
+
+
+
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <tinygltf/stb_image.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -75,6 +87,13 @@
 
 namespace sutil
 {
+    std::string currFilename = "";
+    std::string filename = "";
+    int dem[3];
+    bool changeState = false;
+    bool is_textFile = false;
+    bool is_ImGuiActive;
+    
 
 static void errorCallback( int error, const char* description )
 {
@@ -405,7 +424,7 @@ GLFWwindow* initGLFW( const char* window_title, int width, int height )
         throw Exception( "Failed to create GLFW window" );
 
     glfwMakeContextCurrent( window );
-    glfwSwapInterval( 0 );  // No vsync
+    glfwSwapInterval( 1 );  // No vsync
 
     return window;
 }
@@ -415,15 +434,15 @@ void initImGui( GLFWwindow* window )
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    (void)io;
-
-    ImGui_ImplGlfw_InitForOpenGL( window, false );
-    ImGui_ImplOpenGL3_Init();
+    ImGuiIO& io = ImGui::GetIO(); 
+    
     ImGui::StyleColorsDark();
-    io.Fonts->AddFontDefault();
+    ImGui_ImplGlfw_InitForOpenGL( window, true );
+    ImGui_ImplOpenGL3_Init();
+   
+    //io.Fonts->AddFontDefault();
 
-    ImGui::GetStyle().WindowBorderSize = 0.0f;
+    //ImGui::GetStyle().WindowBorderSize = 0.0f;
 }
 
 
@@ -451,6 +470,7 @@ void beginFrameImGui()
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
+    is_ImGuiActive = (ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard);
     ImGui::NewFrame();
 }
 
@@ -472,7 +492,7 @@ void displayBufferWindow( const char* title, const ImageBuffer& buffer )
     if( !glfwInit() )
         throw Exception( "Failed to initialize GLFW" );
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
-    glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
+    glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 0 );
     glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );  // To make Apple happy -- should not be needed
     glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 
@@ -712,6 +732,87 @@ void displayFPS( unsigned int frame_count )
     }
 }
 
+//replace '/' with '\\' in filePath.
+std::string modify_filePath(std::string filePath)
+{
+    std::string newFilePath = "";
+    for (int c = 0; c < filePath.length(); ++c) {
+        char curr = filePath[c];
+        if (curr != '/') {
+            newFilePath = newFilePath + curr;
+        }
+        if (curr == '/') {
+            newFilePath = newFilePath + "\\\\";
+        }
+    }
+    return newFilePath;
+}
+
+//imgui function to handle Gui features.
+
+void createGUI() {
+    beginFrameImGui();
+    
+    //Window: Launch a new simulation. 
+    {
+        bool open = false;
+        bool inputText = false;
+        changeState = false;
+        is_textFile = false;
+
+        ImGui::SetNextWindowPos(ImVec2(10.0f, 100.0f));
+        ImGui::SetNextWindowSize(ImVec2(300.0f, 250.0f));
+        ImGui::Begin("Launch a new simulation.");
+        ImGui::Text("Select file.");
+
+        if (ImGui::Button("open")) {
+            open = true;
+        }
+
+        ImGui::Text(filename.c_str());
+        
+        ImGui::End();
+
+        if (open)
+            ImGui::OpenPopup("open");
+
+        if (file_dialog.showFileDialog("open", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310))) {
+
+            //name of file selected.
+            filename = file_dialog.selected_fn;
+
+            //absolute file path of slected file
+            currFilename = modify_filePath(file_dialog.selected_path);
+
+            changeState = true;
+        }
+        
+    }
+    
+}
+
+
+
+int* getDem() 
+{
+    return dem;
+}
+
+std::string getCurrFilename() 
+{
+    return currFilename;
+}
+
+bool getChangeState()
+{
+    return changeState;
+}
+
+bool Get_is_ImGuiActive() 
+{
+    return is_ImGuiActive;
+}
+
 
 void displayStats( std::chrono::duration<double>& state_update_time,
                           std::chrono::duration<double>& render_time,
@@ -725,7 +826,8 @@ void displayStats( std::chrono::duration<double>& state_update_time,
 
     const auto cur_time = std::chrono::steady_clock::now();
 
-    beginFrameImGui();
+    createGUI();
+    
     last_update_frames++;
 
     typedef std::chrono::duration<double, std::milli> durationMs;
@@ -747,6 +849,9 @@ void displayStats( std::chrono::duration<double>& state_update_time,
         state_update_time = render_time = display_time = std::chrono::duration<double>::zero();
     }
     displayText( display_text, 10.0f, 10.0f );
+
+    
+
     endFrameImGui();
 
     ++total_subframe_count;
