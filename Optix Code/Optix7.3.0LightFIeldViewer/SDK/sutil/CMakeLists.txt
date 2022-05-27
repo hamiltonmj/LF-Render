@@ -58,6 +58,11 @@ set(sources
     Trackball.cpp
     Trackball.h
     vec_math.h
+    ImGuiFileBrowser.h
+    dirent.h
+    ImGuiFileBrowser.cpp
+
+
     )
 
 
