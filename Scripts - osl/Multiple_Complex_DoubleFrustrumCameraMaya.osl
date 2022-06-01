@@ -1,0 +1,103 @@
+shader OslCamera(
+    float fov = 50 [[string widget = "number", float min= 0.1,float max = 179.9, string page = "Fov", string label = "FOV"]],
+    float inBehindDist = 5 [[float min= 0, float max = 1000, float slidermin = 0, float sliderexponent = 4, string page = "Clipping Planes", string label = "Behind clipping depth"]],
+    int inFrontCheck = 1 [[string widget = "boolean", string page = "Clipping Planes", string label = "Infinite Far clipping depth"]],
+    float inFarDist = 10 [[float min= 0.001, float max = 1000, float slidermin = 1, float sliderexponent = 4, string page = "Clipping Planes", string label = "Far clipping depth"]],
+    int numHogelX = 1 [[string widget = "number", float min= 1, string page = "Hogel Options", string label = "Number of columns of hogels"]],
+    int numHogelY = 1 [[string widget = "number", float min= 1, string page = "Hogel Options", string label = "Number of rows of hogels"]],
+
+    float CaptureWidth = 1 [[string widget = "number", float min= 0.1, string page = "Capture Region", string label = "Capture Width"]],
+    float CaptureHeight = 1 [[string widget = "number", float min= 0.1, string page = "Capture Region", string label = "Capture Height"]],
+
+
+    output point pos = 0,
+    output vector dir = 0,
+    output float tMax = 1.0/0.0)
+{
+    //If we are using a limited far clipping depth will use that plus the near clipping distance instead of infinity
+    if(inFrontCheck == 0) { tMax =  inBehindDist + inFarDist;} 
+
+//////////////////////////////Hogel creation Code///////////////////////////////////////
+
+    int sceneResolution[2];
+    getattribute("camera:resolution", sceneResolution);
+
+    int pixelXY[2];
+    getattribute("pixel:pos", pixelXY);
+
+    int resolutionPerHogel[2];
+
+    resolutionPerHogel[0] = (int)floor((float)sceneResolution[0] / numHogelX);
+    resolutionPerHogel[1] = (int)floor((float)sceneResolution[1] / numHogelY);
+
+    //Shift to allow our viewing region to have its (0, 0) coordinate in the center of the region
+    float widthShift = floor(0.5 * sceneResolution[0]);
+    float heightShift = floor(0.5 * sceneResolution[1]);
+
+    //Potential area for problem look at when testing
+    int curHogel[2];
+    curHogel[0] = (int)floor(((float)pixelXY[0]) / resolutionPerHogel[0]);
+    curHogel[1] = (int)floor((pixelXY[1]) / resolutionPerHogel[1]);
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////Position Code////////////////////////////////////////////////////
+    float posXChangePerHogel = 0;
+    float posYChangePerHogel = 0;
+
+    //Check needed as if we allow value of 1 we get division by zero and negative number will also produce errors
+    if( numHogelX > 1 )
+    {
+        posXChangePerHogel = CaptureWidth / (numHogelX);
+    }
+    if( numHogelY > 1 )
+    {
+        posYChangePerHogel = CaptureHeight / (numHogelY);
+    }
+
+    vector newPos = vector( posXChangePerHogel * curHogel[0] + (0.5 * posXChangePerHogel) , posYChangePerHogel * curHogel[1] + (0.5 * posYChangePerHogel) , 0);
+
+    //sets the focal point  to the center of the current hogel the ray belongs too.
+    pos = P + transform("camera", "world", newPos);
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////Direction Code//////////////////////////////////////////////
+
+    //The local hogel coordinate of the current ray using (-resolutionPerHogel/2 -> resolutionPerHogel/2) system
+    int hogelCoordinate[2];
+    hogelCoordinate[0] = (pixelXY[0] % resolutionPerHogel[0]) - (int)floor(0.5 * resolutionPerHogel[0]);
+    hogelCoordinate[1] = (pixelXY[1] % resolutionPerHogel[1]) - (int)floor(0.5 * resolutionPerHogel[1]);
+
+    //The local hogel coordinate of the current ray using (-1.0 -> 1.0) system
+    float hogelCoordinatePercent[2];
+    hogelCoordinatePercent[0] = 2 *  ((float)hogelCoordinate[0] / resolutionPerHogel[0]);
+    hogelCoordinatePercent[1] = 2 * -((float)hogelCoordinate[1] / resolutionPerHogel[1]);
+
+    //The max distance on the right vector a rays direction will be based off the field of view
+    float tanHalfFov = tan(radians(fov/2));
+
+    //Ray direction values are modified so they will correspond to the new field of view
+    //sets the -1.0 and 1.0 hogelPercent to respond to the total distance tanHalfFov creates then the rest represent the parts 
+    // of it
+    float u1 = tanHalfFov * hogelCoordinatePercent[0]; 
+    float v1 = tanHalfFov * hogelCoordinatePercent[1];
+
+
+    //We first use the newPos calculated above to allow us to be in the right area in our capture resolution before we move out toward the direction 
+    //that the ray will move too as our ray is not from the camera origin but our set pos each time
+    dir = newPos + vector(u1, v1, -1.0);
+
+    //This is used to allow the creation of the dobule frustrum
+    vector dirNormalized = normalize(dir);
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+    //To allow the double frustrum behaviour we move our pos in the direction opposite of the rays direction
+    // By using inBehindDist and the normalized direction we can set our distance away by parameter
+    pos = pos - transform("camera", "world",(dirNormalized * inBehindDist));
+
+    dir = transform("camera", "world", dir);
+}
