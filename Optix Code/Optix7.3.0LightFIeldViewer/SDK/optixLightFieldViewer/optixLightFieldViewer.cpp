@@ -390,7 +390,7 @@ void createTexObject(CallableProgramsState& state, const char* filename)
     //Cuda textures need 4 channels, so if image does not have them we add an alpha channel
     if (image1.channels() != 4)
     {
-        std::cout << "Warning: Invalid Number of Image Channels, attempting to convert RGB to RGBA \n";
+        std::cout << "Warning: Invalid Number of Image Channels, attempting to convert BGR to BGRA \n";
         cv::cvtColor(image1, image1, cv::COLOR_BGR2BGRA);
     }
 

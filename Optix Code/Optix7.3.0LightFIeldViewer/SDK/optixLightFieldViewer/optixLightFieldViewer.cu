@@ -40,6 +40,40 @@ extern "C" {
     __constant__ whitted::LaunchParams params;
 }
 
+__device__ float4 uchar4Tofloat4(uchar4 a)
+{
+    return make_float4((float)a.x, (float)a.y, (float)a.z, (float)a.w);
+}
+
+
+__device__ float4 billinearInterp(float texPosX, float texPosY, const cudaTextureObject_t& tex)
+{
+    //Bottom location for bilinear interp
+    float bottomX = floor(texPosX);
+    float bottomY = floor(texPosY);
+    
+    float topX = ceil(texPosX);
+    float topY = ceil(texPosY);
+
+    float distLR = (topX - bottomX) == 0 ? 1 : (topX - bottomX);
+    float distTB = (topY - bottomY) == 0 ? 1 : (topY - bottomY);
+
+    float dx = (topX - texPosX) / distLR;
+    float dy = (topY - texPosY) / distTB;
+
+
+    float4 bottomLeft = uchar4Tofloat4(tex2D<uchar4>(tex, bottomX, bottomY));
+    float4 bottomRight = uchar4Tofloat4(tex2D<uchar4>(tex, topX, bottomY));
+
+    float4 topLeft = uchar4Tofloat4(tex2D<uchar4>(tex, bottomX,topY));
+    float4 topRight = uchar4Tofloat4(tex2D<uchar4>(tex, topX, topY));
+
+    float4 r1 = (topLeft * dx) + (topRight * (1- dx));
+    float4 r2 = (bottomLeft * dx) + (bottomRight * (1-dx));
+    return (r1 * dy) + (r2 * (1-dy));
+}
+
+
 
 extern "C" __global__ void __closesthit__ch1()
 {
@@ -59,14 +93,16 @@ extern "C" __global__ void __closesthit__ch1()
     horizontalAngle = (horizontalAngle/ 2) + 0.5;
     verticalAngle = (verticalAngle / 2) + 0.5;
 
+    //IF the viewing angle is outside the capture views of the lightfiled black the pixel out
     if (horizontalAngle >= 1 || verticalAngle >= 1 || horizontalAngle < 0 || verticalAngle < 0)
     {
         whitted::setPayloadResult(make_float3(0, 0, 0));
         return;
     }
 
-    float HogelX = round(hitData.widthInHogel   * uv.x);
-    float HogelY = round(hitData.heightInHogels * uv.y);
+    //Gets the hogel pixel is in 
+    float HogelX = floor(hitData.widthInHogel   * uv.x);
+    float HogelY = floor(hitData.heightInHogels * uv.y);
 
     //This is the number of pixels per hogel
     float pixelsPerHogelX = hitData.texWidth /  hitData.widthInHogel;
@@ -80,11 +116,11 @@ extern "C" __global__ void __closesthit__ch1()
     float texPosX = ((HogelX * pixelsPerHogelX) + inHogelPosX);
     float texPosY = ((HogelY * pixelsPerHogelY) + inHogelPosY);
 
-   if (hitData.texHeight != hitData.heightInHogels) { texPosY = hitData.texHeight - texPosY; }
+    float4 outColor = billinearInterp(texPosX,texPosY, hitData.tex);
 
-   uchar4 color = tex2D<uchar4>(hitData.tex, texPosX, texPosY);
    //Converts image pixel values into floats then divides them by 255 to properly represent colors
-   whitted::setPayloadResult(make_float3((float)color.z/255, (float)color.y/255, (float)color.x / 255));
+   // Note: color is originally in bgr format this also converts into rgb 
+   whitted::setPayloadResult(make_float3(outColor.z/255, outColor.y/255, outColor.x / 255));
 }
 
 // Miss
@@ -97,5 +133,5 @@ extern "C" __global__ void __miss__raydir_shade()
     //float3 result = //optixContinuationCall<float3, float3>( 0, ray_dir );
 
 
-    whitted::setPayloadResult(make_float3(0.0f, 0.0f, 0.0f));
+    whitted::setPayloadResult(make_float3(1.0f, 0.0f, 0.0f));
 }
