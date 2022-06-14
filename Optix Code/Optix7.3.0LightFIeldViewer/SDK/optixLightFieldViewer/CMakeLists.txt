@@ -27,10 +27,16 @@
 #
 
 OPTIX_add_sample_executable( optixLightFieldViewer target_name
+  Main.cpp
   optixLightFieldViewer.cpp
   optixLightFieldViewer.cu
   optixLightFieldViewer.h
-
+  RecordData.cpp
+  RecordData.h
+  RenderEngine.cpp
+  RenderEngine.h
+  TextureDataTypes.cpp
+  TextureDataTypes.h
   OPTIONS -rdc true
   )
 

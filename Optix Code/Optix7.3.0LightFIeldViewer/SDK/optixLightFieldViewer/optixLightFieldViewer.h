@@ -27,39 +27,81 @@
 //
 
 #pragma once
-#include <cuda/whitted.h>
+#include <sutil/CUDAOutputBuffer.h>
+#include <sutil/Camera.h>
+#include "ctrlMap.h"
+#include <sutil/GLDisplay.h>
+#include "RenderEngine.h"
+#include "RecordData.h"
 
 
-struct EmptyData
+class lightFieldViewer
 {
-};
+public:
+	ctrlMap m_ctrlMapping = ctrlMap();
+	GLFWwindow* m_window;
+	RenderEngine m_optixEngine;
 
-struct HitGroupData 
-{
-    unsigned int color;
-    unsigned int texWidth;
-    unsigned int texHeight;
+	sutil::Camera    m_camera;
+	sutil::Trackball m_trackball;
 
-    unsigned int widthInHogel;
-    unsigned int heightInHogels;
-    float fov;
+	bool m_camera_changed = true;
+	bool m_resize_dirty = false;
 
-    float* horizontalHogels;
-    cudaTextureObject_t tex;
-};
+	bool m_tracking = false;
+	float m_shifted = 1;
+	bool m_minimized = false;
 
+	// Mouse state
+	int32_t m_mouse_button = -1;	
+	
+	lightFieldViewer()
+		: m_optixEngine(RenderEngine()) {}
 
+	/// <summary>
+	/// Places Camera in its inital position within the scene and sets up its vectors
+	/// </summary>
+	void lightFieldViewer::initCameraState();
 
+	/// <summary>
+	/// Checks to see if any input has been given and the nupdates the renderEngines parameters to reflect it 
+	/// </summary>
+	void lightFieldViewer::updateState();
 
-struct float4Array
-{
-    float4* data;
-    int size;
-};
+	/// <summary>
+	/// Given a ctrl will perform the action given from it 
+	/// Specifically this looks at a signle value from the control ie on/off
+	/// </summary>
+	/// <param name="ctrl"> Control to be performed</param>
+	void lightFieldViewer::performDescreteControl(int ctrl);
 
+	/// <summary>
+	/// Given a ctrl will perform the action given from it 
+	/// Specifically this looks at at continous values given by a controller ie mouse position
+	/// and will apply based on non descrete values
+	/// </summary>
+	/// <param name="ctrl">Control to be performed</param>
+	/// <param name="value"> Analog value given from the crtl</param>
+	void lightFieldViewer::performAnalogControl(int ctrl, std::pair<float, float> value);
 
-struct FloatArray
-{
-    float* data;
-    int size;
+	/// <summary>
+	/// Given a buffer will display it to the screen
+	/// </summary>
+	/// <param name="output_buffer"> Buffer to be displayed</param>
+	/// <param name="gl_display"> the gl_display object we are using to display </param>
+	/// <param name="window"> The window to display our object in</param>
+	void lightFieldViewer::displaySubframe(sutil::CUDAOutputBuffer<uchar4>& output_buffer, sutil::GLDisplay& gl_display, GLFWwindow* window);
+
+	/// <summary>
+	/// Builds the entire lightfield viewer application
+	/// </summary>
+	/// <param name="bufType"> Buffer type being used for output</param>
+	/// <param name="file"> if we just wantto save to a file we can</param>
+	/// <returns> returns a glfwWindow object which can be used to add eventhandleers and such too</returns>
+	GLFWwindow* lightFieldViewer::build( sutil::CUDAOutputBufferType bufType, std::string file);
+
+	/// <summary>
+	/// THis function performs the entire renderlooping and will only return when the user closes the lightfield viewer
+	/// </summary>
+	void lightFieldViewer::renderLoop();
 };

@@ -32,8 +32,7 @@
 #include <cuda/whitted_cuda.h>
 
 #include "whitted.h"
-#include "optixLightFieldViewer.h"
-
+#include "RecordData.h"
 
 
 extern "C" {
@@ -85,7 +84,7 @@ extern "C" __global__ void __closesthit__ch1()
 
     uv = (optixGetPrimitiveIndex() == 1) ? make_float2(1 - uv.x, uv.y) : make_float2(uv.x, 1 - uv.y);
 
-    float maxAngleLength = tan((hitData.fov / 2.0) * CUDART_PI_F / 180.0);
+    float maxAngleLength = tan((hitData.m_fov / 2.0) * CUDART_PI_F / 180.0);
     float3 dir = optixGetWorldRayDirection();
     float horizontalAngle = (dir.x / -dir.z) / maxAngleLength;
     float verticalAngle =   (dir.y / -dir.z) / maxAngleLength;
@@ -101,12 +100,12 @@ extern "C" __global__ void __closesthit__ch1()
     }
 
     //Gets the hogel pixel is in 
-    float HogelX = floor(hitData.widthInHogel   * uv.x);
-    float HogelY = floor(hitData.heightInHogels * uv.y);
+    float HogelX = floor(hitData.m_widthInHogel   * uv.x);
+    float HogelY = floor(hitData.m_heightInHogels * uv.y);
 
     //This is the number of pixels per hogel
-    float pixelsPerHogelX = hitData.texWidth /  hitData.widthInHogel;
-    float pixelsPerHogelY = hitData.texHeight / hitData.heightInHogels;
+    float pixelsPerHogelX = hitData.m_texWidth /  hitData.m_widthInHogel;
+    float pixelsPerHogelY = hitData.m_texHeight / hitData.m_heightInHogels;
 
     //This is the position within a hogel an angle corresponds too.
     // We get the number of pixels within a single hogel then use the percentage generated from  inHogel Index to get recieve the actual location.
@@ -116,7 +115,7 @@ extern "C" __global__ void __closesthit__ch1()
     float texPosX = ((HogelX * pixelsPerHogelX) + inHogelPosX);
     float texPosY = ((HogelY * pixelsPerHogelY) + inHogelPosY);
 
-    float4 outColor = billinearInterp(texPosX,texPosY, hitData.tex);
+    float4 outColor = billinearInterp(texPosX,texPosY, hitData.m_tex);
 
    //Converts image pixel values into floats then divides them by 255 to properly represent colors
    // Note: color is originally in bgr format this also converts into rgb 
