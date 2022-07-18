@@ -31,13 +31,14 @@
 #include "opencv2/core.hpp" 
 #include "opencv2/opencv.hpp"
 
-#include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
 
 #include <sutil/CUDAOutputBuffer.h>
 #include <sutil/Camera.h>
 #include <sutil/Exception.h>
 #include <sutil/GLDisplay.h>
+#include <sutil/Matrix.h>
 #include <sutil/Trackball.h>
 #include <sutil/sutil.h>
 
@@ -58,11 +59,6 @@
 #include "RenderEngine.h"
 #include "RecordData.h"
 #include "ctrlMap.h"
-
-
-
-
-
 
 void lightFieldViewer::initCameraState()
 {
@@ -208,11 +204,12 @@ void lightFieldViewer::performAnalogControl(int ctrl, std::pair<float, float> va
 
 void lightFieldViewer::displaySubframe( sutil::CUDAOutputBuffer<uchar4>& output_buffer, sutil::GLDisplay& gl_display, GLFWwindow* window )
 {
+    glfwMakeContextCurrent(window);
     // Display
     int framebuf_res_x = 0;  // The display's resolution (could be HDPI res)
     int framebuf_res_y = 0;  //
     glfwGetFramebufferSize( window, &framebuf_res_x, &framebuf_res_y );
-    gl_display.display( output_buffer.width(), output_buffer.height(), framebuf_res_x, framebuf_res_y, output_buffer.getPBO() );
+    gl_display.display(output_buffer.width(), output_buffer.height(), framebuf_res_x, framebuf_res_y, output_buffer.getPBO() );
 }
 
 
@@ -224,7 +221,9 @@ GLFWwindow* lightFieldViewer::build(sutil::CUDAOutputBufferType bufType, std::st
         m_optixEngine.buildEngine();
         if (file.empty())
         {
-            m_window = sutil::initUI("Real Time Lightfield Render", m_optixEngine.GetDisplayWidth(), m_optixEngine.GetDisplayHeight());
+             m_window = sutil::initUI("Real Time Lightfield Render", m_optixEngine.GetDisplayWidth(), m_optixEngine.GetDisplayHeight());
+            //            m_window = sutil::initUI("Real Time Lightfield Render", 768, 768);
+//            m_optixEngine.buildEngine();
             return m_window;
         }
         else
@@ -239,9 +238,9 @@ GLFWwindow* lightFieldViewer::build(sutil::CUDAOutputBufferType bufType, std::st
             m_optixEngine.launchSubframe();
 
             sutil::ImageBuffer buffer;
-            buffer.data = m_optixEngine.GetOutputBuffer().getHostPointer();
-            buffer.width = m_optixEngine.GetOutputBuffer().width();
-            buffer.height = m_optixEngine.GetOutputBuffer().height();
+            buffer.data = m_optixEngine.GetOutputBuffer()->getHostPointer();
+            buffer.width = m_optixEngine.GetOutputBuffer()->width();
+            buffer.height = m_optixEngine.GetOutputBuffer()->height();
             buffer.pixel_format = sutil::BufferImageFormat::UNSIGNED_BYTE4;
            // sutil::saveImage(outfile.c_str(), buffer, false);
 
@@ -261,9 +260,11 @@ GLFWwindow* lightFieldViewer::build(sutil::CUDAOutputBufferType bufType, std::st
 
 void lightFieldViewer::renderLoop()
 {
+    
     std::chrono::duration<double> state_update_time(0.0);
     std::chrono::duration<double> render_time(0.0);
     std::chrono::duration<double> display_time(0.0);
+    //m_optixEngine.setOutputBuffer(sutil::CUDAOutputBufferType::GL_INTEROP);
     sutil::GLDisplay gl_display;
 
     do
@@ -283,7 +284,7 @@ void lightFieldViewer::renderLoop()
         t1 = std::chrono::steady_clock::now();
         render_time += t1 - t0;
         t0 = t1;
-        displaySubframe(m_optixEngine.GetOutputBuffer(), gl_display, m_window);
+        displaySubframe(*m_optixEngine.GetOutputBuffer(), gl_display, m_window);
 
         t1 = std::chrono::steady_clock::now();
         display_time += t1 - t0;
@@ -302,3 +303,51 @@ void lightFieldViewer::renderLoop()
         ++m_optixEngine.GetState()->params.subframe_index;
     } while (!glfwWindowShouldClose(m_window));
 }
+
+void lightFieldViewer::renderLoop(GLFWwindow * window)
+{
+    //glfwMakeContextCurrent(window);
+    std::chrono::duration<double> state_update_time(0.0);
+    std::chrono::duration<double> render_time(0.0);
+    std::chrono::duration<double> display_time(0.0);
+    m_optixEngine.setOutputBuffer(sutil::CUDAOutputBufferType::GL_INTEROP, window);
+    sutil::GLDisplay gl_display;
+    glfwMakeContextCurrent(window);
+
+    do
+    {
+        auto t0 = std::chrono::steady_clock::now();
+
+        glfwPollEvents();
+
+        //updateState( output_buffer, state );
+        updateState();
+        auto t1 = std::chrono::steady_clock::now();
+        state_update_time += t1 - t0;
+        t0 = t1;
+
+        m_optixEngine.launchSubframe();
+        //                  launchSubframe( output_buffer, state );
+        t1 = std::chrono::steady_clock::now();
+        render_time += t1 - t0;
+        t0 = t1;
+        displaySubframe(*m_optixEngine.GetOutputBuffer(), gl_display, window);
+
+        t1 = std::chrono::steady_clock::now();
+        display_time += t1 - t0;
+
+        sutil::displayStats(state_update_time, render_time, display_time);
+
+        bool changeState = sutil::getChangeState();
+
+        if (changeState)
+        {
+            performDescreteControl(m_ctrlMapping.getctrl(std::pair<int, int>(-6, 1)));
+        }
+
+        glfwSwapBuffers(window);
+
+        ++m_optixEngine.GetState()->params.subframe_index;
+    } while (!glfwWindowShouldClose(window));
+}
+

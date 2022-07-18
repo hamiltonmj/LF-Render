@@ -1,7 +1,12 @@
 #pragma once 
 #include <glad/glad.h>  // Needs to be included before gl_interop
 #include <optix.h>
+
+
 #include <cuda_gl_interop.h>
+#include <GLFW/glfw3.h>
+
+
 #include <cuda_runtime.h>
 #include <sutil/Camera.h>
 #include <sutil/CUDAOutputBuffer.h>
@@ -54,7 +59,7 @@ private:
     typedef Record<EmptyData>    RayGenRecord;
     typedef Record<EmptyData>    MissRecord;
     typedef Record<HitGroupData> HitGroupRecord;
-    
+
     /// <summary>
     /// Generates Camera program used by optix during rendering 
     /// </summary>
@@ -128,7 +133,7 @@ public:
     /// Generates intial paramters used by to run optix
     /// </summary>
     /// <param name="outBuffType"> Type of output buffer to use, by default we use GL_INTEROPT but depending on contexts this should change</param>
-    void RenderEngine::initLaunchParams(sutil::CUDAOutputBufferType outBuffType = sutil::CUDAOutputBufferType::GL_INTEROP);
+    void RenderEngine::initLaunchParams();
 
     /// <summary>
     /// Given a camera object will update the renderer engines internal camera to represent the new position
@@ -159,6 +164,16 @@ public:
     /// </summary>
     /// <param name="file">image to be used to replace the current texture</param>
     void RenderEngine::updateTexture(std::string file);
+
+    void RenderEngine::setOutputBuffer(sutil::CUDAOutputBufferType bufType = sutil::CUDAOutputBufferType::CUDA_DEVICE, GLFWwindow* window = NULL)
+    {
+       //    std::cout << "Done FOR HERE11\n";
+        glfwMakeContextCurrent(window);
+        m_output_buffer.deletePBO();
+        m_output_buffer = sutil::CUDAOutputBuffer<uchar4>(bufType, m_state.params.width, m_state.params.height);
+        m_output_buffer.setStream(m_state.stream);
+        //   std::cout << "Done FOR HERE\n";
+    }
 
 
     //General utility functions
@@ -216,7 +231,7 @@ public:
     /// Returns render engines output
     /// </summary>
     /// <returns>output buffer of optix</returns>
-    sutil::CUDAOutputBuffer<uchar4>& RenderEngine::GetOutputBuffer() { return m_output_buffer; }
+    sutil::CUDAOutputBuffer<uchar4>* RenderEngine::GetOutputBuffer() { return &m_output_buffer; }
 };
 
 

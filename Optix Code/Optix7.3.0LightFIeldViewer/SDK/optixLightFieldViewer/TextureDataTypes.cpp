@@ -66,7 +66,7 @@ HitGroupData TextureData::toHitRecord()
     rec.m_texHeight = m_height;
     rec.m_tex = *m_texObject;
     rec.m_widthInHogel = m_width;
-    rec.m_heightInHogels = m_height;
+    rec.m_heightInHogel = m_height;
     rec.m_fov = 180;
     return rec;
 }
@@ -104,7 +104,7 @@ HitGroupData LightFieldData::toHitRecord()
     rec.m_tex = *m_texObject;
 
     rec.m_widthInHogel = m_widthInHogels;
-    rec.m_heightInHogels = m_widthInHogels;
+    rec.m_heightInHogel = m_heightInHogels;
     rec.m_fov = m_fov;
     return rec;
 }

@@ -1,9 +1,9 @@
-#include <glad/glad.h>  // Needs to be included before gl_interop
+//#include <glad/glad.h>  // Needs to be included before gl_interop
 
 #include "opencv2/core.hpp" 
 #include "opencv2/opencv.hpp"
 
-#include <cuda_gl_interop.h>
+//#include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
 #include <optix.h>
@@ -25,17 +25,19 @@
 
 
 RenderEngine::RenderEngine(size_t w, size_t h)
-    :m_state(), m_output_buffer(sutil::CUDAOutputBufferType::CUDA_DEVICE, w,h)
+    :m_state(RenderState()), m_output_buffer(sutil::CUDAOutputBufferType::CUDA_DEVICE, w,h)
+  //  :m_state(), m_output_buffer(sutil::CUDAOutputBufferType::GL_INTEROP, w, h)
 {
-    m_state = RenderState();
+   // m_state = ;
     m_state.params.width = w;
     m_state.params.height = h;
 }
 
 RenderEngine::RenderEngine()
-    :m_state(), m_output_buffer(sutil::CUDAOutputBufferType::CUDA_DEVICE, 768, 768)
+    :m_state(RenderState()), m_output_buffer(sutil::CUDAOutputBufferType::CUDA_DEVICE, 768, 768)
+//    :m_state(), m_output_buffer(sutil::CUDAOutputBufferType::GL_INTEROP, 768, 768)
 {
-    m_state = RenderState();
+   // m_state = RenderState();
     m_state.params.width = 768;
     m_state.params.height = 768;
 }
@@ -71,14 +73,14 @@ void RenderEngine::loadTexture(std::string fileName)
 
 
     //TODO: ADD MULTI TEXTURE SUPPORT
-    //This will need to be removed once more txtures are added, but also a better referning system will need to be implemented to better control how textures are refernced
+    //This will need to be modified once more txtures are added, but also a better referning system will need to be implemented to better control how textures are refernced
     //per face/ object 
     //IE: a factory could be good here
     m_state.texObjects.insert({ fileName,tex});
 }
 
 
-void RenderEngine::initLaunchParams(sutil::CUDAOutputBufferType outBuffType)
+void RenderEngine::initLaunchParams()
 {
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_state.params.accum_buffer),
         m_state.params.width * m_state.params.height * sizeof(float4)));
@@ -105,6 +107,10 @@ void RenderEngine::initLaunchParams(sutil::CUDAOutputBufferType outBuffType)
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_state.d_params), sizeof(whitted::LaunchParams)));
 
     m_state.params.handle = m_state.gas_handle;
+
+//    m_output_buffer = sutil::CUDAOutputBuffer<uchar4>(outBuffType, m_state.params.width, m_state.params.height);
+//    m_output_buffer.setStream(m_state.stream);
+
 }
 
 void RenderEngine::handleCameraUpdate(sutil::Camera* cam)
@@ -118,7 +124,7 @@ void RenderEngine::handleCameraUpdate(sutil::Camera* cam)
 
 void RenderEngine::handleResize()
 {
-    m_state.params.subframe_index = 0;
+    //m_state.params.subframe_index = 0;
     m_output_buffer.resize(m_state.params.width, m_state.params.height);
 
     // Realloc accumulation buffer

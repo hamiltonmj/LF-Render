@@ -1,3 +1,5 @@
+//To use OSL camera within Maya we need to define FOV as a variable, instead of in octane standalone where it is auto initialized
+
 shader OslCamera(
     float fov = 50 [[string widget = "number", float min= 0.1,float max = 179.9, string page = "Fov", string label = "FOV"]],
     float inBehindDist = 5 [[float min= 0, float max = 1000, float slidermin = 0, float sliderexponent = 4, string page = "Clipping Planes", string label = "Behind clipping depth"]],
@@ -26,7 +28,6 @@ shader OslCamera(
     getattribute("pixel:pos", pixelXY);
 
     int resolutionPerHogel[2];
-
     resolutionPerHogel[0] = (int)floor((float)sceneResolution[0] / numHogelX);
     resolutionPerHogel[1] = (int)floor((float)sceneResolution[1] / numHogelY);
 
@@ -35,6 +36,8 @@ shader OslCamera(
     float heightShift = floor(0.5 * sceneResolution[1]);
 
     //Potential area for problem look at when testing
+    //pixelXY[1] = sceneResolution[1] - pixelXY[1];
+
     int curHogel[2];
     curHogel[0] = (int)floor(((float)pixelXY[0]) / resolutionPerHogel[0]);
     curHogel[1] = (int)floor((pixelXY[1]) / resolutionPerHogel[1]);
@@ -46,7 +49,7 @@ shader OslCamera(
     float posXChangePerHogel = 0;
     float posYChangePerHogel = 0;
 
-    //Check needed as if we allow value of 1 we get division by zero and negative number will also produce errors
+    //Check needed as if we allow any vlaue less then one we either get division by zero  or negative number which both will produce errors
     if( numHogelX > 1 )
     {
         posXChangePerHogel = CaptureWidth / (numHogelX);
@@ -56,6 +59,7 @@ shader OslCamera(
         posYChangePerHogel = CaptureHeight / (numHogelY);
     }
 
+    //we first shift the pos of the ray to the hogel we are in, then we need to shift it to the middle of that hogel
     vector newPos = vector( posXChangePerHogel * curHogel[0] + (0.5 * posXChangePerHogel) , posYChangePerHogel * curHogel[1] + (0.5 * posYChangePerHogel) , 0);
 
     //sets the focal point  to the center of the current hogel the ray belongs too.
@@ -65,29 +69,31 @@ shader OslCamera(
 
 
 //////////////////////////////Direction Code//////////////////////////////////////////////
+    //Note: When referencing  image plane within the comments it is related to the image plane of the local hogel, and not the global image plane 
 
-    //The local hogel coordinate of the current ray using (-resolutionPerHogel/2 -> resolutionPerHogel/2) system
+    //Given a pixel will find where inside a hogel it is found in pixels, with the center (0,0) cordinate being in the center of the hogel 
+    //so the coordinates go from [-resolutionPerHogel/2 -> resolutionPerHogel/2]
     int hogelCoordinate[2];
     hogelCoordinate[0] = (pixelXY[0] % resolutionPerHogel[0]) - (int)floor(0.5 * resolutionPerHogel[0]);
     hogelCoordinate[1] = (pixelXY[1] % resolutionPerHogel[1]) - (int)floor(0.5 * resolutionPerHogel[1]);
 
-    //The local hogel coordinate of the current ray using (-1.0 -> 1.0) system
+    // Converts the hogelCoordinates into a system based on a new range of (-1.0 -> 1.0)
+    //Since we want the values of -1 and 1 to represent the outer edges of the capture plane
     float hogelCoordinatePercent[2];
-    hogelCoordinatePercent[0] = 2 *  ((float)hogelCoordinate[0] / resolutionPerHogel[0]);
-    hogelCoordinatePercent[1] = 2 * -((float)hogelCoordinate[1] / resolutionPerHogel[1]);
+    hogelCoordinatePercent[0] = 2 * ((float)hogelCoordinate[0] / resolutionPerHogel[0]);
+    hogelCoordinatePercent[1] = 2 * ((float)hogelCoordinate[1] / resolutionPerHogel[1]);
 
-    //The max distance on the right vector a rays direction will be based off the field of view
+    //Given a Fov, this computes the the maximum distance in the x,y plane from the center of the fov, any ray will travel, given the focal length is one
     float tanHalfFov = tan(radians(fov/2));
 
-    //Ray direction values are modified so they will correspond to the new field of view
-    //sets the -1.0 and 1.0 hogelPercent to respond to the total distance tanHalfFov creates then the rest represent the parts 
-    // of it
+    //we can determine how far a single ray needs to travel in the x,y directions by comparing where they land on the camera plane, with how far the edges of the viewing plane are
+    //Since the edge of the camera plane are represented by hogelCoordinatePercent which has values between -1 and 1 at maximum the x,y distane will be 1 * tanHalfFOV which represents
+    //The farthest distance on the capture plane
     float u1 = tanHalfFov * hogelCoordinatePercent[0]; 
     float v1 = tanHalfFov * hogelCoordinatePercent[1];
 
-
-    //We first use the newPos calculated above to allow us to be in the right area in our capture resolution before we move out toward the direction 
-    //that the ray will move too as our ray is not from the camera origin but our set pos each time
+    //With the now determined new direction for the ray to be pointed, we now adjust for the fact that the position was calculate relative to the 
+    //newPos of the hogel we are working in and not 0,0 so we simply shift the ray by the same value to center it on the hogels center
     dir = newPos + vector(u1, v1, -1.0);
 
     //This is used to allow the creation of the dobule frustrum

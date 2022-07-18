@@ -9,7 +9,7 @@ class HitGroupData
 public:
 
     unsigned m_widthInHogel;
-    unsigned m_heightInHogels;
+    unsigned m_heightInHogel;
     float m_fov;
 
     unsigned m_texWidth;

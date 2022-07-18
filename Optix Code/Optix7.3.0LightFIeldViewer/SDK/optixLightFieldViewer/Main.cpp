@@ -162,6 +162,8 @@ int main(int argc, char* argv[])
 
     try
     {
+//        GLFWwindow* window = sutil::initUI("Real Time Lightfield Render", 768, 768);
+       // lFViewer.build(output_buffer_type, outfile);
         auto window = lFViewer.build(output_buffer_type, outfile);
         if (window)
         {
@@ -174,6 +176,6 @@ int main(int argc, char* argv[])
         std::cerr << "Caught exception: " << e.what() << "\n";
         exit;
     }
-    
+
     return 0;
 }

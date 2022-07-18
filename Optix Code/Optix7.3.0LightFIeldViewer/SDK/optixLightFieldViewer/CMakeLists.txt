@@ -37,6 +37,7 @@ OPTIX_add_sample_executable( optixLightFieldViewer target_name
   RenderEngine.h
   TextureDataTypes.cpp
   TextureDataTypes.h
+  ctrlMap.h
   OPTIONS -rdc true
   )
 

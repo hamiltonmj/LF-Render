@@ -42,8 +42,8 @@ public:
 /// </summary>
 class LightFieldData : public TextureBase
 {
-    unsigned int m_widthInHogels;
-    unsigned int m_heightInHogels;
+    unsigned m_widthInHogels;
+    unsigned m_heightInHogels;
     float m_fov;
 public:
     

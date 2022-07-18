@@ -52,6 +52,8 @@ public:
 	float m_shifted = 1;
 	bool m_minimized = false;
 
+	//sutil::GLDisplay* m_gl_display;
+
 	// Mouse state
 	int32_t m_mouse_button = -1;	
 	
@@ -104,4 +106,5 @@ public:
 	/// THis function performs the entire renderlooping and will only return when the user closes the lightfield viewer
 	/// </summary>
 	void lightFieldViewer::renderLoop();
+	void lightFieldViewer::renderLoop(GLFWwindow* window);
 };
