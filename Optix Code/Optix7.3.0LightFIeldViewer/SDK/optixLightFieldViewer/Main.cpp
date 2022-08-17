@@ -7,6 +7,12 @@
 #include "optixLightFieldViewer.h"
 
 
+#include "openxr/include/openxr.h"
+#include "openxr/include/openxr_platform.h"
+
+XrSwapchainImageAcquireInfo a;
+
+//xr::enumerateInstanceExtensionProperties();
 lightFieldViewer lFViewer = lightFieldViewer();
 
 //------------------------------------------------------------------------------
