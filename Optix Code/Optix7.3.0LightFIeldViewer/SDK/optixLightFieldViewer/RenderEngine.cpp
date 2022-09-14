@@ -195,15 +195,16 @@ void RenderEngine::createGeometry()
         // Triangle build input: simple list of three vertices
         const std::array<float3, 6> vertices =
         { {
-                { -1.0f, -1.0f, 0.0f },
-                {  1.0f, -1.0f, 0.0f },
-                { -1.0f,  1.0f, 0.0f },
+                { -1.0f/10, -1.0f/10, -3.0f / 10},
+                {  1.0f / 10, -1.0f / 10, -3.0f / 10 },
+                { -1.0f / 10,  1.0f / 10, -3.0f / 10 },
 
-                {  1.0f,  1.0f, 0.0f },
-                { -1.0f,  1.0f, 0.0f },
-                {  1.0f, -1.0f, 0.0f }
+                {  1.0f / 10,  1.0f / 10, -3.0f / 10 },
+                { -1.0f / 10,  1.0f / 10, -3.0f / 10 },
+                {  1.0f / 10, -1.0f / 10, -3.0f / 10 }
         } };
 
+        
         const size_t vertices_size = sizeof(float3) * vertices.size();
         CUdeviceptr d_vertices = 0;
         CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_vertices), vertices_size));

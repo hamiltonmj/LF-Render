@@ -222,8 +222,8 @@ GLFWwindow* lightFieldViewer::build(sutil::CUDAOutputBufferType bufType, std::st
         if (file.empty())
         {
              m_window = sutil::initUI("Real Time Lightfield Render", m_optixEngine.GetDisplayWidth(), m_optixEngine.GetDisplayHeight());
-            //            m_window = sutil::initUI("Real Time Lightfield Render", 768, 768);
-//            m_optixEngine.buildEngine();
+            // m_window = sutil::initUI("Real Time Lightfield Render", 768, 768);
+//           m_optixEngine.buildEngine();
             return m_window;
         }
         else
@@ -264,7 +264,7 @@ void lightFieldViewer::renderLoop()
     std::chrono::duration<double> state_update_time(0.0);
     std::chrono::duration<double> render_time(0.0);
     std::chrono::duration<double> display_time(0.0);
-    //m_optixEngine.setOutputBuffer(sutil::CUDAOutputBufferType::GL_INTEROP);
+    m_optixEngine.setOutputBuffer(sutil::CUDAOutputBufferType::GL_INTEROP);
     sutil::GLDisplay gl_display;
 
     do

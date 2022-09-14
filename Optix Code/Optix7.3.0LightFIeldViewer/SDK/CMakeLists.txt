@@ -243,20 +243,6 @@ include_directories(
 # Select whether to use NVRTC or NVCC to generate PTX
 set(CUDA_NVRTC_ENABLED ON CACHE BOOL "Use NVRTC to compile PTX at run-time instead of NVCC at build-time")
 
-###################################################################
-#CMake Include
-# Also need to define both these environment variables in order to run 
-# OPENCV_IO_MAX_IMAGE_PIXELS : 1850000000000
-# Add To PATH : .../lib/OpenCV/x64/vc15/bin
-
-set(OpenCV_DIR "${CMAKE_SOURCE_DIR}/lib/OpenCV")
-find_package( OpenCV REQUIRED)
-
-include_directories(${OpenCV_INCLUDE_DIRS})
-
-link_directories(${OpenCV_LIB_DIR})
-
-##################################################################
 # SUtil compilation
 
 set(SAMPLES_PTX_DIR "${CMAKE_BINARY_DIR}/lib/ptx")
@@ -360,13 +346,28 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
     ${cmake_options}
     )
 
+  #################################################################################################
+
+  # OpenXR static library inclusion
+  set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+  include_directories(${CMAKE_SOURCE_DIR}\\openXR\\include)
+
+
+  #################################################################################################
+
+  #  OpenCV library inclusion
+  FIND_PACKAGE(OpenCV REQUIRED)
+  TARGET_LINK_LIBRARIES(${target_name} ${OpenCV_LIBS})
+  #################################################################################################
+
+
   # Most of the samples link against the sutil library and the optix library.  Here is the
   # rule that specifies this linkage.
   target_link_libraries( ${target_name}
     ${GLFW_LIB_NAME}
     imgui
     sutil_7_sdk
-    ${OpenCV_LIBS}
+    ${CMAKE_SOURCE_DIR}\\openXR\\openxr_loader.lib
     )
 
   set_target_properties( ${target_name} PROPERTIES

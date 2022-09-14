@@ -29,6 +29,7 @@
 OPTIX_add_sample_executable( optixLightFieldViewer target_name
   Main.cpp
   optixLightFieldViewer.cpp
+  VirtualReality.cpp
   optixLightFieldViewer.cu
   optixLightFieldViewer.h
   RecordData.cpp
@@ -38,6 +39,7 @@ OPTIX_add_sample_executable( optixLightFieldViewer target_name
   TextureDataTypes.cpp
   TextureDataTypes.h
   ctrlMap.h
+  VirtualReality.h
   OPTIONS -rdc true
   )
 

@@ -13,6 +13,8 @@
 #include "opencv2/core.hpp" 
 #include "TextureDataTypes.h"
 #include <map>
+#include <whitted.h>
+
 
 /// <summary>
 /// Contains all basic datastructures needed for optix to function

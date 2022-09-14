@@ -1,3 +1,5 @@
+
+
 //
 // Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 //
@@ -383,8 +385,8 @@ void initGL()
     if( !gladLoadGL() )
         throw Exception( "Failed to initialize GL" );
 
-    GL_CHECK( glClearColor( 0.212f, 0.271f, 0.31f, 1.0f ) );
-    GL_CHECK( glClear( GL_COLOR_BUFFER_BIT ) );
+     GL_CHECK( glClearColor( 0.212f, 0.271f, 0.31f, 1.0f ) );
+     GL_CHECK( glClear( GL_COLOR_BUFFER_BIT ) );
 }
 
 void initGLFW()
@@ -450,7 +452,7 @@ GLFWwindow* initUI( const char* window_title, int width, int height )
 {
     GLFWwindow* window = initGLFW( window_title, width, height );
     initGL();
-    initImGui( window );
+    //initImGui( window );
     return window;
 }
 
