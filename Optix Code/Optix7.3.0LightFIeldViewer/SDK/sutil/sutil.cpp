@@ -95,6 +95,7 @@ namespace sutil
     bool changeState = false;
     bool is_textFile = false;
     bool is_ImGuiActive;
+    bool launch_VR;
     
 
 static void errorCallback( int error, const char* description )
@@ -452,7 +453,7 @@ GLFWwindow* initUI( const char* window_title, int width, int height )
 {
     GLFWwindow* window = initGLFW( window_title, width, height );
     initGL();
-    //initImGui( window );
+    initImGui( window );
     return window;
 }
 
@@ -776,6 +777,7 @@ void createGUI() {
         ImGui::End();
 
         if (open)
+           
             ImGui::OpenPopup("open");
 
         if (file_dialog.showFileDialog("open", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310))) {
@@ -791,6 +793,15 @@ void createGUI() {
         
     }
     
+    {
+        ImGui::SetNextWindowPos(ImVec2(10.0f, 450.0f));
+        ImGui::SetNextWindowSize(ImVec2(300.0f, 250.0f));
+        ImGui::Begin("Launch a VR simulation.");
+        if (ImGui::Button("Lanch VR")) {
+            launch_VR = true;
+        }
+        ImGui::End();
+    }
 }
 
 
@@ -813,6 +824,10 @@ bool getChangeState()
 bool Get_is_ImGuiActive() 
 {
     return is_ImGuiActive;
+}
+bool get_launchVR() 
+{   
+    return launch_VR;
 }
 
 

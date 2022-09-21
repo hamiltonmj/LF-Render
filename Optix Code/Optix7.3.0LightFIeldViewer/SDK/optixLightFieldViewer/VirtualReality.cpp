@@ -15,9 +15,49 @@
 #include <iostream>
 
 
-
+openXR_app::openXR_app(GLFWwindow* window1)
+{
+	window = window1;
+	glfwMakeContextCurrent(window);
+}
 ////////////////////////////
+bool openXR_app::launchApp() 
+{
 
+	if (!openxr_init("VR_app")) {
+		MessageBox(nullptr, "OpenXR initialization failed\n", "Error", 1);
+		return 1;
+	}
+
+	buildEngine();
+	bool quit = false;
+
+	while (!quit) {
+
+		openxr_poll_events(quit);
+
+		if (get_xr_running()) {
+			renderFrame();
+			
+			if (get_xr_session_state() != XR_SESSION_STATE_VISIBLE &&
+				get_xr_session_state() != XR_SESSION_STATE_FOCUSED) {
+
+				std::this_thread::sleep_for(std::chrono::milliseconds(250));
+			}
+		}
+
+
+
+
+
+	} 
+
+	openxr_shutdown();
+
+	return 0;
+
+
+}
 
 bool openXR_app::prepareGLFramebufer(uint32_t view_count,uint32_t* swapchain_lengths,GLuint*** framebuffers, GLuint* shader_program_id,
 	GLuint* VAO
@@ -42,7 +82,7 @@ bool openXR_app::prepareGLFramebufer(uint32_t view_count,uint32_t* swapchain_len
 // create swapchain
 bool openXR_app::prepareSwapchain()
 {
-
+	
 	// Now we need to find all the viewpoints we need to take care of! For a stereo headset, this should be 2.
 	// Similarly, for an AR phone, we'll need 1, and a VR cave could have 6, or even 12!
 	uint32_t view_count = 0;
@@ -93,10 +133,6 @@ bool openXR_app::prepareSwapchain()
 		
 		xr_swapchains.push_back(swapchain);
 	}
-	
-	//m_optixEngine = RenderEngine::RenderEngine(renderTargetWidth, renderTargetHeight);
-	
-	
 	
 	prepareGLFramebufer(view_count, swapchain_lengths, &gl_rendering.framebuffers, &gl_rendering.shader_program_id, &gl_rendering.VAO);
 	
@@ -244,8 +280,8 @@ bool openXR_app::openxr_init(const char* app_name)
 	XrGraphicsRequirementsOpenGLKHR requirement = { XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR };
 	ext_xrGetOpenGLGraphicsRequirementsKHR(xr_instance, xr_system_id, &requirement);
 	
-	window = sutil::initUI("Real Time Lightfield Rendering in VR", 1568, 1568);
-	glfwMakeContextCurrent(window);
+	//window = sutil::initUI("Real Time Lightfield Rendering in VR", 1568, 1568);
+	
 
 	
 	
@@ -342,68 +378,14 @@ void openXR_app::GLrendering(XrCompositionLayerProjectionView &view, GLuint surf
 
 	std::vector<float> rotationMatrix = makeRotationMatrix4x4(make_float4(view.pose.orientation.w, view.pose.orientation.x, view.pose.orientation.y, view.pose.orientation.z));
 	float4 newUP = MatrixMul(rotationMatrix, make_float4(0, 1, 0, 0));
-	float4 newDirection = MatrixMul(rotationMatrix, lookDirection);
+	float4 newLookDirection = MatrixMul(rotationMatrix, lookDirection);
 
-	/*	//float3 dir = m_camera.direction();
-	//std::vector<float> rotationMatrix = makeRotationMatrix4x4(make_float4(view.pose.orientation.x, view.pose.orientation.y, view.pose.orientation.z, view.pose.orientation.w));
-	//float4 newUP = MatrixMul(rotationMatrix, make_float4(0, 1, 0, 0));
-	m_camera.setEye(make_float3(view.pose.position.x * 20, view.pose.position.y * 20, view.pose.position.z * 50));
+	m_camera.setEye( make_float3(view.pose.position.x, view.pose.position.y, view.pose.position.z ));	
 	m_camera.setFovY((view.fov.angleRight - view.fov.angleLeft) * 180 / M_PI);
 	m_camera.setUp(make_float3(newUP.x, newUP.y, newUP.z));
-	m_camera.setDirection(normalize(make_float3(newDirection.x, newDirection.y, newDirection.z)));
-	
+	m_camera.setDirection(normalize(make_float3(newLookDirection.x, newLookDirection.y, newLookDirection.z)));
+
 	m_optixEngine.handleCameraUpdate(&m_camera);
-	*/
-
-	
-	
-	if (eye == 0) { 
-		//Left_m_camera.setEye(amplifyPos(view.pose.position.x, view.pose.position.y, view.pose.position.z, 20));
-		//float3 dir = Left_m_camera.direction();
-		//float3 D =  (Left_m_camera.eye() - make_float3(view.pose.position.x, view.pose.position.y ,view.pose.position.z));
-		Left_m_camera.setEye( make_float3(view.pose.position.x, view.pose.position.y, view.pose.position.z ));
-		//Left_m_camera.setLookat( make_float3(D.x + Left_m_camera.lookat().x, D.y + Left_m_camera.lookat().y, D.z + Left_m_camera.lookat().z));
-		Left_m_camera.setFovY((view.fov.angleRight - view.fov.angleLeft) * 180 / M_PI);
-	
-		//float4 newDir = MatrixMul(rotationMatrix, normalize(make_float4(left_eye_dir.x, left_eye_dir.y, left_eye_dir.z, 0)));
-		//Left_m_camera.setDirection(normalize(make_float3(newDir.x, newDir.y, newDir.z)));
-		
-		Left_m_camera.setUp(make_float3(newUP.x, newUP.y, newUP.z));
-		Left_m_camera.setDirection(normalize(make_float3(newDirection.x, newDirection.y, newDirection.z)));
-		//Left_m_camera.setDirection(dir);
-		m_optixEngine.handleCameraUpdate(&Left_m_camera);
-		//left_eye_dir = Left_m_camera.direction();
-
-
-		
-	}	
-	
-	if (eye == 1) {
-		//Right_m_camera.setEye(amplifyPos(view.pose.position.x, view.pose.position.y, view.pose.position.z, 20));
-		
-
-		float3 right = normalize(cross(Left_m_camera.direction(), Left_m_camera.up()));
-		//float3 dir = Right_m_camera.direction();
-		
-		
-		
-		Right_m_camera.setEye(make_float3(view.pose.position.x, view.pose.position.y, view.pose.position.z));
-		//Right_m_camera.setEye(Left_m_camera.eye() + (right * 0.0632515)); //0.0632515
-		//Right_m_camera.setLookat(Left_m_camera.lookat() + make_float3(right.x * 0.0632137, right.y * 0.0632137, right.z));
-		//Right_m_camera.setLookat(make_float3(D.x + Right_m_camera.lookat().x, D.y + Right_m_camera.lookat().y, D.z + Right_m_camera.lookat().z));
-		Right_m_camera.setFovY((view.fov.angleRight - view.fov.angleLeft) * 180 / M_PI);
-		
-		//float4 newDir = MatrixMul(rotationMatrix, normalize(make_float4(right_eye_dir.x, right_eye_dir.y, right_eye_dir.z, 0)));
-		//Right_m_camera.setDirection(normalize(make_float3(newDir.x, newDir.y, newDir.z)));
-		//Right_m_camera.setDirection(right_eye_dir);
-		Right_m_camera.setUp(make_float3(newUP.x, newUP.y, newUP.z));
-		//Right_m_camera.setUp(make_float3(newUP.x, newUP.y, newUP.z));
-		//Right_m_camera.setDirection(make_float3(newDirection.x, newDirection.y, newDirection.z));
-		Right_m_camera.setDirection(normalize(make_float3(newDirection.x, newDirection.y, newDirection.z)));
-		m_optixEngine.handleCameraUpdate(&Right_m_camera);
-		//right_eye_dir = Right_m_camera.direction();
-	}
-	
 	
 	m_optixEngine.launchSubframe();
 	sutil::CUDAOutputBuffer<uchar4>& output_buffer = *m_optixEngine.GetOutputBuffer();
@@ -514,33 +496,17 @@ void openXR_app::openxr_poll_events(bool& exit) {
 
 bool openXR_app::buildEngine() 
 {
-	/*
+	
 	m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
 	m_camera.setLookat(make_float3(0.0f, 0.0f, -1.0f));
 	m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));
 	m_camera.setFovY(60.0f);
 	lookDirection = make_float4(m_camera.direction().x, m_camera.direction().y, m_camera.direction().z, 0);
-	
-	*/
-	
-	Left_m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
-	Left_m_camera.setLookat(make_float3(0.0f, 0.0f, -1.0f));
-	Left_m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));
-	Left_m_camera.setFovY(60.0f);
-	lookDirection = make_float4(Left_m_camera.direction().x, Left_m_camera.direction().y, Left_m_camera.direction().z, 0);
-	Left_m_camera.setAspectRatio(1);
-	//left_eye_dir = Left_m_camera.direction();
-	
-	Right_m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
-	Right_m_camera.setLookat(make_float3(0.0f, 0.0f, -1.0f));
-	Right_m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));
-	Right_m_camera.setFovY(60.0f);
-	Right_m_camera.setAspectRatio(1);
-	//right_eye_dir = Right_m_camera.direction();
+	m_camera.setAspectRatio(1);
 	
 	m_optixEngine.buildEngine();
 	m_optixEngine.handleCameraUpdate(&m_camera);
-	//m_optixEngine.handleCameraUpdate(&Right_m_camera);
+	
 	return true;
 }
 
@@ -550,13 +516,7 @@ bool openXR_app::buildEngine()
 
 
 void openXR_app::swapchain_destroy(swapchain_t &swapchain) {
-	/*
-	free(swapchain.surface_data);
-	for (uint32_t i = 0; i < swapchain.surface_data.size(); i++) {
-		swapchain.surface_data[i] ->Release();
-		swapchain.surface_data[i].target_view = NULL;
-	}
-	*/
+	
 	xr_swapchains.clear();
 }
 
@@ -655,7 +615,6 @@ float4 openXR_app::MatrixMul(std::vector<float> rotationMatrix, float4 vector4) 
 	newVec.y = (rotationMatrix[4] * vector4.x) + (rotationMatrix[5] * vector4.y) + (rotationMatrix[6] * vector4.z) + (rotationMatrix[7] * vector4.w);
 	newVec.z = (rotationMatrix[8] * vector4.x) + (rotationMatrix[9] * vector4.y) + (rotationMatrix[10] * vector4.z) + (rotationMatrix[11] * vector4.w);
 	newVec.w = (rotationMatrix[12] * vector4.x) + (rotationMatrix[13] * vector4.y) + (rotationMatrix[14] * vector4.z) + (rotationMatrix[15] * vector4.w);
-
 	return newVec;
 }
 
@@ -670,7 +629,7 @@ float4 openXR_app::MatrixMul(std::vector<float> rotationMatrix, float4 vector4) 
 /// }
 /// </summary>
 /// <param name="quaternion"></param>
-/// <returns></returns>
+/// <returns> rotation Matrix </returns>
 std::vector<float> openXR_app::makeRotationMatrix4x4(float4 quaternion) {
 	std::vector<float> rotationMatrix;
 	rotationMatrix.resize(16);
@@ -703,24 +662,4 @@ std::vector<float> openXR_app::makeRotationMatrix4x4(float4 quaternion) {
 
 }
 
-float3 openXR_app::amplifyPos(float x, float y, float z, float amplifyBy) {
-	return make_float3(x* amplifyBy, y * amplifyBy, 50 + ( z * 50));
-}
-
-
-void openXR_app::displayFrame_onWindow(sutil::CUDAOutputBuffer<uchar4>& output_buffer, sutil::GLDisplay& gl_display, GLFWwindow* window)
-{
-	/*
-	glfwMakeContextCurrent(window);
-	// Display
-	int framebuf_res_x = 0;  // The display's resolution (could be HDPI res)
-	int framebuf_res_y = 0;  //
-	glfwGetFramebufferSize(window, &framebuf_res_x, &framebuf_res_y);
-	gl_display.display(output_buffer.width(), output_buffer.height(), framebuf_res_x, framebuf_res_y, output_buffer.getPBO());
-	*/
-}
-
-
-
-///////////////////////////////////////////
 

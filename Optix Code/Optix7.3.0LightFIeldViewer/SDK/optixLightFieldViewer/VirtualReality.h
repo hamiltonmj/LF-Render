@@ -42,23 +42,12 @@ struct swapchain_t {
 class openXR_app
 	{
 
-	//sutil::GLDisplay gl_display;
-	//sutil::BufferImageFormat m_image_format;
 	RenderEngine m_optixEngine = RenderEngine::RenderEngine(1568,1568);
 	sutil::Camera    m_camera;
-
-	
-	
-
-	sutil::Camera    Left_m_camera;
-	sutil::Camera    Right_m_camera;
 	float4 lookDirection;
 
 	XrResult result;
-
-	////////////////////////////////////////////
-
-
+	
 	///////////////////////////////////////////
 
 	// Function pointers for some OpenXR extension methods we'll use.
@@ -86,8 +75,7 @@ class openXR_app
 	std::vector<XrView>                  xr_views;
 	std::vector<XrViewConfigurationView> xr_config_views;
 	
-	float3 left_eye_dir;
-	float3 right_eye_dir;
+
 	
 	int renderTargetWidth;
 	int renderTargetHeight;
@@ -115,37 +103,66 @@ class openXR_app
 
 	///////////////////////////////////////////
 
-
-
 	public:
 
+		openXR_app::openXR_app(GLFWwindow* window);
+		bool launchApp();
 
+
+		//prepares Swapchain. XR applications will want to present rendered images to the user. 
+		//To allow this, the runtime provides images organized in swapchains for the application to render into.
+		//return true if it succesfully creates swapchain.
 		bool prepareSwapchain();
-		bool openxr_init(const char* app_name);
-		bool renderLayer(XrTime predictedTime, std::vector<XrCompositionLayerProjectionView> &views, XrCompositionLayerProjection &layer);
-		void renderFrame();
-		void openxr_poll_events(bool& exit);
-		void openxr_shutdown();
-		bool get_xr_running();
+
+		//facilates in swapchain image rendering. Swapchain image is attached to framebuffer before rendering into swapchain image.
 		bool prepareGLFramebufer(uint32_t view_count, uint32_t* swapchain_lengths, GLuint*** framebuffers, GLuint* shader_program_id,
 			GLuint* VAO);
-		void GLrendering(XrCompositionLayerProjectionView &view, GLuint surface, GLuint swapchainImage, int eye, GLuint shader_program_id,
-			GLuint VAO);
-		XrSessionState get_xr_session_state();
-		void swapchain_destroy(swapchain_t &swapchain);
-		bool buildEngine();
-		//helper functions
-		static void print_instance_properties(XrInstance instance);
-		static void print_system_properties(XrSystemProperties* system_properties);
-		static void print_viewconfig_view_info(uint32_t view_count, XrViewConfigurationView* viewconfig_views);
-		void displayFrame_onWindow(sutil::CUDAOutputBuffer<uchar4>& output_buffer, sutil::GLDisplay& gl_display, GLFWwindow* window);
-		std::vector<float> makeRotationMatrix4x4(float4 quaternion);
-		float4 MatrixMul(std::vector<float> rotationMatrix, float4 vector4);
-		float3 amplifyPos(float x, float y, float z, float amplifyBy);
+
+		//Distroy swapchain just before application is terminated.
+		void swapchain_destroy(swapchain_t& swapchain); 
+
+		//renders one frame of VR application, asks OpenXR runtime for position, orientation, and what swapchain Image to render into. 
 		
+		bool renderLayer(XrTime predictedTime, std::vector<XrCompositionLayerProjectionView>& views, XrCompositionLayerProjection& layer);
+		
+		//actual rendering on the swapchain image happens here.
+		void GLrendering(XrCompositionLayerProjectionView& view, GLuint surface, GLuint swapchainImage, int eye, GLuint shader_program_id,
+			GLuint VAO);
 
 		
+		//helper functions
+
+		static void print_instance_properties(XrInstance instance);
 		
+		static void print_system_properties(XrSystemProperties* system_properties);
+		
+		static void print_viewconfig_view_info(uint32_t view_count, XrViewConfigurationView* viewconfig_views);
+		
+		//converts Quaternion into its rotationMatrix. 
+		std::vector<float> makeRotationMatrix4x4(float4 quaternion);
+		
+		// Rotation matrix is multiplied by coloumn vector
+		float4 MatrixMul(std::vector<float> rotationMatrix, float4 vector4);
+
+		//initalizes openXR
+		bool openxr_init(const char* app_name);
+		
+		//Poll for headset state
+		void openxr_poll_events(bool& exit);
+
+		//render frame from actual rendering loop
+		void renderFrame();
+		
+
+		bool get_xr_running();
+	
+		//builds Optix Rendering engine
+		bool buildEngine();
+
+		XrSessionState get_xr_session_state();
+
+		//terminates OpenXR
+		void openxr_shutdown();
 		
 
 };

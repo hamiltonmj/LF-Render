@@ -127,7 +127,11 @@ SUTILAPI int* getDem();
 //return true if file is a txt file.
 SUTILAPI bool getIs_textFile();
 
+// if ImGUI is being used or not by keyboard or mouse
 SUTILAPI bool Get_is_ImGuiActive();
+
+//if launchVR button is pressed or not
+SUTILAPI bool get_launchVR();
 
 // Display a short string starting at x,y.
 SUTILAPI void displayText( const char* text, float x, float y );
