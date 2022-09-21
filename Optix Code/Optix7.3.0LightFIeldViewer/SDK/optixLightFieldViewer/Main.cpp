@@ -1,10 +1,16 @@
-
+//#include "VirtualReality.cpp"
+#include <optixLightFieldViewer/VirtualReality.h>
 #include <optix.h>
 #include <cuda/whitted.h>
 #include <sutil/CUDAOutputBuffer.h>
 #include <sutil/Trackball.h>
 #include <GLFW/glfw3.h>
 #include "optixLightFieldViewer.h"
+#include <thread>
+#include <chrono> 
+#include <iostream>   
+
+
 
 
 #include "openxr/include/openxr.h"
@@ -97,6 +103,9 @@ void windowIconifyCallback(GLFWwindow* window, int32_t iconified)
 
 
 
+
+
+
 void addCallbacks(GLFWwindow* window)
 {
     glfwSetCursorPosCallback(window, cursorPosCallback);
@@ -125,8 +134,10 @@ void printUsageAndExit(const char* argv0)
     exit(0);
 }
 
+
 int main(int argc, char* argv[])
 {
+    
     sutil::CUDAOutputBufferType output_buffer_type = sutil::CUDAOutputBufferType::GL_INTEROP;
 
     //
@@ -168,14 +179,16 @@ int main(int argc, char* argv[])
 
     try
     {
-//        GLFWwindow* window = sutil::initUI("Real Time Lightfield Render", 768, 768);
-       // lFViewer.build(output_buffer_type, outfile);
+        
         auto window = lFViewer.build(output_buffer_type, outfile);
         if (window)
         {
             addCallbacks(window);
             lFViewer.renderLoop();
         }
+
+
+
     }
     catch (std::exception& e)
     {
@@ -184,4 +197,9 @@ int main(int argc, char* argv[])
     }
 
     return 0;
+    
+    //openXR_app app;
+    //return app.launchApp();
 }
+   
+

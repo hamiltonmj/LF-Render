@@ -13,6 +13,7 @@
 */
 
 #include "openxr.h"
+#include <windows.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -508,8 +509,8 @@ typedef struct XrGraphicsBindingEGLMNDX {
 #define XR_MSFT_perception_anchor_interop 1
 #define XR_MSFT_perception_anchor_interop_SPEC_VERSION 1
 #define XR_MSFT_PERCEPTION_ANCHOR_INTEROP_EXTENSION_NAME "XR_MSFT_perception_anchor_interop"
-typedef XrResult (XRAPI_PTR *PFN_xrCreateSpatialAnchorFromPerceptionAnchorMSFT)(XrSession session, IUnknown* perceptionAnchor, XrSpatialAnchorMSFT* anchor);
-typedef XrResult (XRAPI_PTR *PFN_xrTryGetPerceptionAnchorFromSpatialAnchorMSFT)(XrSession session, XrSpatialAnchorMSFT anchor, IUnknown** perceptionAnchor);
+//typedef XrResult (XRAPI_PTR *PFN_xrCreateSpatialAnchorFromPerceptionAnchorMSFT)(XrSession session, IUnknown* perceptionAnchor, XrSpatialAnchorMSFT* anchor);
+//typedef XrResult (XRAPI_PTR *PFN_xrTryGetPerceptionAnchorFromSpatialAnchorMSFT)(XrSession session, XrSpatialAnchorMSFT anchor, IUnknown** perceptionAnchor);
 
 #ifndef XR_NO_PROTOTYPES
 #ifdef XR_EXTENSION_PROTOTYPES
@@ -533,12 +534,14 @@ XRAPI_ATTR XrResult XRAPI_CALL xrTryGetPerceptionAnchorFromSpatialAnchorMSFT(
 #define XR_MSFT_HOLOGRAPHIC_WINDOW_ATTACHMENT_EXTENSION_NAME "XR_MSFT_holographic_window_attachment"
 #ifdef XR_USE_PLATFORM_WIN32
 // XrHolographicWindowAttachmentMSFT extends XrSessionCreateInfo
+/*
 typedef struct XrHolographicWindowAttachmentMSFT {
     XrStructureType             type;
     const void* XR_MAY_ALIAS    next;
     IUnknown*                   holographicSpace;
     IUnknown*                   coreWindow;
 } XrHolographicWindowAttachmentMSFT;
+*/
 #endif // XR_USE_PLATFORM_WIN32
 
 #endif /* XR_USE_PLATFORM_WIN32 */

@@ -25,7 +25,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-
+#include <optixLightFieldViewer/VirtualReality.h>
 #include <glad/glad.h>  // Needs to be included before gl_interop
 
 #include "opencv2/core.hpp" 
@@ -95,7 +95,8 @@ void lightFieldViewer::performDescreteControl(int ctrl)
     switch (ctrl)
     {
     case ctrlMap::ctrls::exit:
-        glfwSetWindowShouldClose(m_window, true);
+        std::cout << "Hello VR, exit! \n";
+       // glfwSetWindowShouldClose(m_window, true);
         break;
 
     case ctrlMap::ctrls::forward:
@@ -222,8 +223,8 @@ GLFWwindow* lightFieldViewer::build(sutil::CUDAOutputBufferType bufType, std::st
         if (file.empty())
         {
              m_window = sutil::initUI("Real Time Lightfield Render", m_optixEngine.GetDisplayWidth(), m_optixEngine.GetDisplayHeight());
-            //            m_window = sutil::initUI("Real Time Lightfield Render", 768, 768);
-//            m_optixEngine.buildEngine();
+            // m_window = sutil::initUI("Real Time Lightfield Render", 768, 768);
+          //m_optixEngine.buildEngine();
             return m_window;
         }
         else
@@ -292,10 +293,15 @@ void lightFieldViewer::renderLoop()
         sutil::displayStats(state_update_time, render_time, display_time);
 
         bool changeState = sutil::getChangeState();
-
+        
         if (changeState)
         {
             performDescreteControl(m_ctrlMapping.getctrl(std::pair<int, int>(-6, 1)));
+        }
+
+        if (sutil::get_launchVR()) {
+            openXR_app app(m_window);
+            app.launchApp();
         }
 
         glfwSwapBuffers(m_window);
@@ -303,51 +309,3 @@ void lightFieldViewer::renderLoop()
         ++m_optixEngine.GetState()->params.subframe_index;
     } while (!glfwWindowShouldClose(m_window));
 }
-
-void lightFieldViewer::renderLoop(GLFWwindow * window)
-{
-    //glfwMakeContextCurrent(window);
-    std::chrono::duration<double> state_update_time(0.0);
-    std::chrono::duration<double> render_time(0.0);
-    std::chrono::duration<double> display_time(0.0);
-    m_optixEngine.setOutputBuffer(sutil::CUDAOutputBufferType::GL_INTEROP, window);
-    sutil::GLDisplay gl_display;
-    glfwMakeContextCurrent(window);
-
-    do
-    {
-        auto t0 = std::chrono::steady_clock::now();
-
-        glfwPollEvents();
-
-        //updateState( output_buffer, state );
-        updateState();
-        auto t1 = std::chrono::steady_clock::now();
-        state_update_time += t1 - t0;
-        t0 = t1;
-
-        m_optixEngine.launchSubframe();
-        //                  launchSubframe( output_buffer, state );
-        t1 = std::chrono::steady_clock::now();
-        render_time += t1 - t0;
-        t0 = t1;
-        displaySubframe(*m_optixEngine.GetOutputBuffer(), gl_display, window);
-
-        t1 = std::chrono::steady_clock::now();
-        display_time += t1 - t0;
-
-        sutil::displayStats(state_update_time, render_time, display_time);
-
-        bool changeState = sutil::getChangeState();
-
-        if (changeState)
-        {
-            performDescreteControl(m_ctrlMapping.getctrl(std::pair<int, int>(-6, 1)));
-        }
-
-        glfwSwapBuffers(window);
-
-        ++m_optixEngine.GetState()->params.subframe_index;
-    } while (!glfwWindowShouldClose(window));
-}
-
