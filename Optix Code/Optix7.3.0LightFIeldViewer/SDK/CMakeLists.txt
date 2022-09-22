@@ -351,6 +351,22 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
   # OpenXR static library inclusion
   include_directories(${CMAKE_SOURCE_DIR}\\openXR\\include)
 
+  #Includes the release library of openXR
+  add_Library(openXR SHARED IMPORTED)
+  set_target_properties(openXR PROPERTIES
+    IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}\\openXR\\openxr_loader.lib"
+    IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}\\openXR\\openxr_loader.dll"
+  )
+  target_link_libraries(${target_name} optimized openXR) 
+
+  #Includes the debug library of openXR
+  add_Library(openXRd SHARED IMPORTED)
+  set_target_properties(openXRd PROPERTIES
+    IMPORTED_IMPLIB "${CMAKE_SOURCE_DIR}\\openXR\\openxr_loaderd.lib"
+    IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}\\openXR\\openxr_loaderd.dll"
+  )
+  target_link_libraries(${target_name} debug openXRd) 
+
   #################################################################################################
 
   #  OpenCV library inclusion
@@ -365,7 +381,6 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
     ${GLFW_LIB_NAME}
     imgui
     sutil_7_sdk
-    ${CMAKE_SOURCE_DIR}\\openXR\\openxr_loader.lib
     )
 
   set_target_properties( ${target_name} PROPERTIES
@@ -380,6 +395,16 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
   if(USING_GNU_CXX)
     target_link_libraries( ${target_name} m ) # Explicitly link against math library (C samples don't do that by default)
   endif()
+
+
+  # Will Move needed DLLs into the same dir as the exe on build!
+  add_custom_command(TARGET ${target_name} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${target_name}> $<TARGET_FILE_DIR:${target_name}>
+    COMMAND_EXPAND_LISTS
+  )
+
+ 
+
 endfunction()
 
 #########################################################
@@ -399,6 +424,9 @@ add_subdirectory( lib/DemandLoading )
 add_subdirectory(support)
 
 #################################################################
+
+ #Note this is invalid if we use htis function on any other sample, will set the start up project to the last added!
+ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT optixLightFieldViewer)
 
 # Now that everything is done, indicate that we have finished configuring at least once.
 # We use this variable to set certain defaults only on the first pass, so that we don't
