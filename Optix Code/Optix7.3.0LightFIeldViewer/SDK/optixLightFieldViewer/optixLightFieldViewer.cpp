@@ -62,14 +62,14 @@
 
 void lightFieldViewer::initCameraState()
 {
-    m_camera.setEye(make_float3(0.0f, 0.0f, 3.0f));
-    m_camera.setLookat(make_float3(0.0f, 0.0f, 0.0f));
+    m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
+    m_camera.setLookat(make_float3(0.0f, 0.0f, -3.0f));
     m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));
     m_camera.setFovY(60.0f);
     m_camera_changed = true;
 
     m_trackball.setCamera(&m_camera);
-    m_trackball.setMoveSpeed(10.0f);
+    m_trackball.setMoveSpeed(0.3f);
     m_trackball.setReferenceFrame(make_float3(1.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 1.0f), make_float3(0.0f, 1.0f, 0.0f));
     m_trackball.setGimbalLock(true);
 }
@@ -91,7 +91,8 @@ void lightFieldViewer::updateState()
 
 void lightFieldViewer::performDescreteControl(int ctrl)
 {
-    float moveRatio = 10 * m_shifted;
+    
+    float moveRatio = 100 * m_shifted;
     switch (ctrl)
     {
     case ctrlMap::ctrls::exit:
@@ -267,11 +268,12 @@ void lightFieldViewer::renderLoop()
     std::chrono::duration<double> display_time(0.0);
     //m_optixEngine.setOutputBuffer(sutil::CUDAOutputBufferType::GL_INTEROP);
     sutil::GLDisplay gl_display;
-
+    auto startTime = std::chrono::steady_clock::now();
     do
     {
+        
         auto t0 = std::chrono::steady_clock::now();
-
+        std::chrono::duration<double> elapsedTime = t0 - startTime;
         glfwPollEvents();
 
         //updateState( output_buffer, state );

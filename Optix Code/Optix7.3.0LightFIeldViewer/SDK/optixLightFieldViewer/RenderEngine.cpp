@@ -22,7 +22,7 @@
 #include "RecordData.h"
 #include "RenderEngine.h"
 
-
+#include <filesystem.>
 
 RenderEngine::RenderEngine(size_t w, size_t h)
     :m_state(RenderState()), m_output_buffer(sutil::CUDAOutputBufferType::CUDA_DEVICE, w,h)
@@ -62,21 +62,48 @@ void RenderEngine::loadTexture(std::string fileName)
         std::string name;
         unsigned width, height, fov;
         file >> name >> width >> height >> fov;
-        std::cout << "Opening Texture As LightField: " << fileName << "\n";
-        tex = std::make_shared<LightFieldData>(loadImageToRam(name), width, height, fov);
+
+        
+        if (name == "!VIDEO!")
+        {
+            size_t pathEnd = fileName.rfind("\\");
+            pathEnd = (std::string::npos == pathEnd) ? fileName.rfind("/") : pathEnd;
+                
+            fileName = fileName.substr(0, pathEnd);
+            std::vector<cv::String> framePaths;
+            cv::glob(fileName, framePaths, false);
+
+            for (size_t x = 0; x < framePaths.size(); x++)
+            {
+                cv::String imageName = framePaths[x];
+                if (RenderEngine::is_textFile(imageName)) continue;
+
+                std::cout << "Opening Texture As LightField: " << imageName << "\n";
+                tex = std::make_shared<LightFieldData>(loadImageToRam(imageName), width, height, fov);
+
+                    
+                m_state.texObjects.insert({ "f" + std::to_string(x),tex});
+                std::cout << "hi";
+            }
+        }
+        else
+        {
+            std::cout << "Opening Texture As LightField: " << fileName << "\n";
+            tex = std::make_shared<LightFieldData>(loadImageToRam(name), width, height, fov);
+            m_state.texObjects.insert({ fileName,tex });
+        }
     }
     else
     {
         std::cout << "Opening Texture As Image: " << fileName << "\n";
         tex = std::make_shared<TextureData>(loadImageToRam(fileName));
+        m_state.texObjects.insert({ fileName,tex });
     }
-
 
     //TODO: ADD MULTI TEXTURE SUPPORT
     //This will need to be modified once more txtures are added, but also a better referning system will need to be implemented to better control how textures are refernced
     //per face/ object 
     //IE: a factory could be good here
-    m_state.texObjects.insert({ fileName,tex});
 }
 
 
@@ -195,13 +222,13 @@ void RenderEngine::createGeometry()
         // Triangle build input: simple list of three vertices
         const std::array<float3, 6> vertices =
         { {
-                { -1.0f/10, -1.0f/10, -3.0f / 10},
-                {  1.0f / 10, -1.0f / 10, -3.0f / 10 },
-                { -1.0f / 10,  1.0f / 10, -3.0f / 10 },
+                { -1.0f / 10, -1.0f / 10, -3.0f },
+                {  1.0f / 10, -1.0f / 10, -3.0f },
+                { -1.0f / 10,  1.0f / 10, -3.0f },
 
-                {  1.0f / 10,  1.0f / 10, -3.0f / 10 },
-                { -1.0f / 10,  1.0f / 10, -3.0f / 10 },
-                {  1.0f / 10, -1.0f / 10, -3.0f / 10 }
+                {  1.0f / 10,  1.0f / 10, -3.0f },
+                { -1.0f / 10,  1.0f / 10, -3.0f },
+                {  1.0f / 10, -1.0f / 10, -3.0f }
         } };
 
         
