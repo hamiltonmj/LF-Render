@@ -29,7 +29,7 @@ bool openXR_app::launchApp()
 		return 1;
 	}
 
-	buildEngine();
+	;
 	bool quit = false;
 
 	while (!quit) {
@@ -45,10 +45,6 @@ bool openXR_app::launchApp()
 				std::this_thread::sleep_for(std::chrono::milliseconds(250));
 			}
 		}
-
-
-
-
 
 	} 
 
@@ -92,7 +88,7 @@ bool openXR_app::prepareSwapchain()
     result = xrEnumerateViewConfigurationViews(xr_instance, xr_system_id, app_config_view, view_count, &view_count, xr_config_views.data());
 
 	if (XR_SUCCESS != result) {
-		printf("Failed to get ViewConfigurationViews.  xrEnumerateViewConfigurationViews() returned XrResult :", result, "\n");
+		std::cout << ("Failed to get ViewConfigurationViews.  xrEnumerateViewConfigurationViews() returned XrResult :", result, "\n");
 		return false;
 	};
 
@@ -110,8 +106,12 @@ bool openXR_app::prepareSwapchain()
 		swapchain_info.mipCount = 1;
 		swapchain_info.faceCount = 1;
 		swapchain_info.format = (int64_t)GL_SRGB8_ALPHA8;
-		swapchain_info.width = view.recommendedImageRectWidth; renderTargetWidth = view.recommendedImageRectWidth;
-		swapchain_info.height = view.recommendedImageRectHeight; renderTargetHeight = view.recommendedImageRectHeight;
+		swapchain_info.width = view.recommendedImageRectWidth; 
+		swapchain_info.height = view.recommendedImageRectHeight;
+
+		renderTargetWidth = view.recommendedImageRectWidth; 
+		renderTargetHeight = view.recommendedImageRectHeight;
+
 		swapchain_info.sampleCount = view.recommendedSwapchainSampleCount;
 		swapchain_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
 		xrCreateSwapchain(xr_session, &swapchain_info, &handle);
@@ -122,6 +122,7 @@ bool openXR_app::prepareSwapchain()
 		//swapchain_lengths[i] = (uint32_t) &surface_count;
 		// We'll want to track our own information about the swapchain, so we can draw stuff onto it! We'll also create
 		// a depth buffer for each generated texture here as well with make_surfacedata.
+
 		swapchain_t swapchain = {};
 		swapchain.width = swapchain_info.width;
 		swapchain.height = swapchain_info.height;
@@ -136,6 +137,7 @@ bool openXR_app::prepareSwapchain()
 	
 	prepareGLFramebufer(view_count, swapchain_lengths, &gl_rendering.framebuffers, &gl_rendering.shader_program_id, &gl_rendering.VAO);
 	
+
 	return true;
 	
 }
@@ -326,12 +328,13 @@ bool openXR_app::openxr_init(const char* app_name)
 		return false;
 	}
 
-	
+//	return prepareSwapchain();
+
 	if (prepareSwapchain()) {
+		buildEngine();
 		return true;
 	}
 	else return false; //swapchain preparation failed.
-	
 	
 }
 
@@ -375,13 +378,14 @@ void openXR_app::renderFrame()
 
 void openXR_app::GLrendering(XrCompositionLayerProjectionView &view, GLuint surface, GLuint swapchainImage, int eye, GLuint shader_program_id, GLuint VAO )
 {
+	
 
 	std::vector<float> rotationMatrix = makeRotationMatrix4x4(make_float4(view.pose.orientation.w, view.pose.orientation.x, view.pose.orientation.y, view.pose.orientation.z));
 	float4 newUP = MatrixMul(rotationMatrix, make_float4(0, 1, 0, 0));
 	float4 newLookDirection = MatrixMul(rotationMatrix, lookDirection);
 
 	m_camera.setEye( make_float3(view.pose.position.x, view.pose.position.y, view.pose.position.z ));	
-	m_camera.setFovY((view.fov.angleRight - view.fov.angleLeft) * 180 / M_PI);
+	m_camera.setFovY((view.fov.angleUp - view.fov.angleDown) * 180 / M_PI);
 	m_camera.setUp(make_float3(newUP.x, newUP.y, newUP.z));
 	m_camera.setDirection(normalize(make_float3(newLookDirection.x, newLookDirection.y, newLookDirection.z)));
 
@@ -391,17 +395,19 @@ void openXR_app::GLrendering(XrCompositionLayerProjectionView &view, GLuint surf
 	sutil::CUDAOutputBuffer<uchar4>& output_buffer = *m_optixEngine.GetOutputBuffer();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, surface);
-	glEnable(GL_TEXTURE_2D);
+	//glEnable(GL_TEXTURE_2D);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, swapchainImage, 0);
 	
-	glClear(GL_COLOR_BUFFER_BIT);
+//	glClear(GL_COLOR_BUFFER_BIT);
 	glBindTexture(GL_TEXTURE_2D, swapchainImage);
+	//glClearColor(1, 0, 1, 1);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, renderTargetWidth, renderTargetHeight, GL_RGBA, GL_UNSIGNED_BYTE, output_buffer.getHostPointer());
+	
 	
 	//display left eye view on the desktop window
 	if(eye == 0){	
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-		glBlitFramebuffer(0, 0, 1568, 1568, 0, 0, 1568, 1568, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		glBlitFramebuffer(0, 0, renderTargetWidth, renderTargetHeight, 0, 0, renderTargetWidth, renderTargetHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		
 		glfwSwapBuffers(window);
 	}
@@ -496,7 +502,8 @@ void openXR_app::openxr_poll_events(bool& exit) {
 
 bool openXR_app::buildEngine() 
 {
-	
+	m_optixEngine.handleResize(renderTargetWidth, renderTargetHeight);
+
 	m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
 	m_camera.setLookat(make_float3(0.0f, 0.0f, -1.0f));
 	m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));

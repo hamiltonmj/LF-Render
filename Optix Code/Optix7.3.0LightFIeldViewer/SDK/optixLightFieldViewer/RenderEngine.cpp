@@ -42,6 +42,18 @@ RenderEngine::RenderEngine()
     m_state.params.height = 768;
 }
 
+void RenderEngine::handleResize(size_t width, size_t height)
+{
+    setDisplayDimensions(width, height);
+    //m_state.params.subframe_index = 0;
+
+    m_output_buffer.resize(m_state.params.width, m_state.params.height);
+
+    // Realloc accumulation buffer
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.params.accum_buffer)));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_state.params.accum_buffer), m_state.params.width * m_state.params.height * sizeof(float4)));
+}
+
 /// <summary>
 /// Given a filename will generate a texture based on it, if given a .txt file will generate a light field given the parameters provided in the file, if given a 
 /// png will load the png image as a texture 

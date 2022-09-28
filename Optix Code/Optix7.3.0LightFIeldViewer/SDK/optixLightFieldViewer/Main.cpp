@@ -16,7 +16,7 @@
 #include "openxr/include/openxr.h"
 #include "openxr/include/openxr_platform.h"
 
-XrSwapchainImageAcquireInfo a;
+
 
 //xr::enumerateInstanceExtensionProperties();
 lightFieldViewer lFViewer = lightFieldViewer();
@@ -181,9 +181,13 @@ int main(int argc, char* argv[])
     {
         
         auto window = lFViewer.build(output_buffer_type, outfile);
+        //GLFWwindow* m_window = sutil::initUI("Real Time Lightfield Render", 2064, 2096);
+        //openXR_app app(m_window);
+      //  app.launchApp();
+        
         if (window)
         {
-            addCallbacks(window);
+           addCallbacks(window);
             lFViewer.renderLoop();
         }
 
