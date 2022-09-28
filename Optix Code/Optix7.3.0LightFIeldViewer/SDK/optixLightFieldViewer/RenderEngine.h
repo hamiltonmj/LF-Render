@@ -206,7 +206,7 @@ public:
     size_t RenderEngine::GetDisplayHeight() { return m_state.params.height; }
 
     /// <summary>
-    /// sets display dimensions
+    /// sets display dimensions !!!!DANGEROUS!!!!! as it does not update output buffers. investigate and potentially remove
     /// </summary>
     /// <param name="w"> width </param>
     /// <param name="h"> height</param>
@@ -216,6 +216,12 @@ public:
         m_state.params.height = h;
     }
 
+    /// <summary>
+    /// Updates render engine to render and display at new width and height
+    /// </summary>
+    /// <param name="width"></param>
+    /// <param name="height"></param>
+    void RenderEngine::handleResize(size_t width, size_t height);
    
     /// <summary>
     /// Returns the stream optix is using

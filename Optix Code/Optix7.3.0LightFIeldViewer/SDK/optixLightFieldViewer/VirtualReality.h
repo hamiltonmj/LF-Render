@@ -30,6 +30,7 @@ struct swapchain_t {
 	int32_t     width;
 	int32_t     height;
 	std::vector<XrSwapchainImageOpenGLKHR> swapchain_images;
+	GLuint* glFrameBuffers; // Array of all framebuffers for the swap chain images
 };
 
 
@@ -42,7 +43,7 @@ struct swapchain_t {
 class openXR_app
 	{
 
-	RenderEngine m_optixEngine = RenderEngine::RenderEngine(1568,1568);
+	RenderEngine m_optixEngine;
 	sutil::Camera    m_camera;
 	float4 lookDirection;
 
@@ -115,8 +116,9 @@ class openXR_app
 		bool prepareSwapchain();
 
 		//facilates in swapchain image rendering. Swapchain image is attached to framebuffer before rendering into swapchain image.
-		bool prepareGLFramebufer(uint32_t view_count, uint32_t* swapchain_lengths, GLuint*** framebuffers, GLuint* shader_program_id,
-			GLuint* VAO);
+		bool prepareGLFramebufer(uint32_t view_count, uint32_t* swapchain_lengths, GLuint*** framebuffers);
+		void openXR_app::prepareGLFramebufer(uint32_t swapchain_length, GLuint*& framebuffers);
+
 
 		//Distroy swapchain just before application is terminated.
 		void swapchain_destroy(swapchain_t& swapchain); 
@@ -126,8 +128,7 @@ class openXR_app
 		bool renderLayer(XrTime predictedTime, std::vector<XrCompositionLayerProjectionView>& views, XrCompositionLayerProjection& layer);
 		
 		//actual rendering on the swapchain image happens here.
-		void GLrendering(XrCompositionLayerProjectionView& view, GLuint surface, GLuint swapchainImage, int eye, GLuint shader_program_id,
-			GLuint VAO);
+		void GLrendering(XrCompositionLayerProjectionView& view, GLuint surface, GLuint swapchainImage, int eye);
 
 		
 		//helper functions

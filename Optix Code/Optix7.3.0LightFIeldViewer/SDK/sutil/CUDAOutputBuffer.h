@@ -354,6 +354,7 @@ PIXEL_FORMAT* CUDAOutputBuffer<PIXEL_FORMAT>::getHostPointer()
         m_host_pixels.resize( m_width*m_height );
 
         makeCurrent();
+//Crashing Here !!!!!!!!!!!!!!!
         CUDA_CHECK( cudaMemcpy(
                     static_cast<void*>( m_host_pixels.data() ),
                     map(),

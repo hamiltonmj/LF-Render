@@ -19,7 +19,7 @@
 XrSwapchainImageAcquireInfo a;
 
 //xr::enumerateInstanceExtensionProperties();
-lightFieldViewer lFViewer = lightFieldViewer();
+lightFieldViewer lFViewer; // = lightFieldViewer();
 
 //------------------------------------------------------------------------------
 //
@@ -167,8 +167,8 @@ int main(int argc, char* argv[])
             const std::string dims_arg = arg.substr(6);
             int               w, h;
             sutil::parseDimensions(dims_arg.c_str(), w, h);
-            lFViewer.m_optixEngine.GetState()->params.width = w;
-            lFViewer.m_optixEngine.GetState()->params.height = h;
+           // lFViewer.m_optixEngine.GetState()->params.width = w;
+           // lFViewer.m_optixEngine.GetState()->params.height = h;
         }
         else
         {
@@ -179,13 +179,22 @@ int main(int argc, char* argv[])
 
     try
     {
+        GLFWwindow* window = sutil::initUI("Real Time Lightfield Render" , 1568, 1568);
+
+        openXR_app app(window);
+        app.launchApp();
         
-        auto window = lFViewer.build(output_buffer_type, outfile);
-        if (window)
-        {
-            addCallbacks(window);
-            lFViewer.renderLoop();
-        }
+        // m_window = sutil::initUI("Real Time Lightfield Render", 768, 768);
+        //m_optixEngine.buildEngine();
+
+
+
+       // auto window = lFViewer.build(output_buffer_type, outfile);
+        //if (window)
+      //  {
+       //     addCallbacks(window);
+       //     lFViewer.renderLoop();
+       // }
 
 
 
