@@ -17,8 +17,8 @@
 
 openXR_app::openXR_app(GLFWwindow* window1)
 {
-	//window = window1;
-	glfwMakeContextCurrent(window1);
+	window = window1;
+	glfwMakeContextCurrent(window);
 }
 ////////////////////////////
 bool openXR_app::launchApp() 
@@ -59,65 +59,20 @@ bool openXR_app::launchApp()
 
 }
 
-
-
-void openXR_app::prepareGLFramebufer( uint32_t swapchain_length, GLuint*& framebuffers)
-{
-	framebuffers = (GLuint*) malloc(sizeof(GLuint) * swapchain_length);
-	glGenFramebuffers(swapchain_length, framebuffers);
-
-
-
-	/* Allocate resources that we use for our own rendering.
-	 * We will bind framebuffers to the runtime provided textures for rendering.
-	 * For this, we create one framebuffer per OpenGL texture.
-	 * This is not mandated by OpenXR, other ways to render to textures will work too.
-	 */
-	 /**framebuffers = (GLuint**) malloc(sizeof(GLuint*) * view_count);
-	 for (uint32_t i = 0; i < view_count; i++) {
-		 (*framebuffers)[i] = (GLuint*) malloc(sizeof(GLuint) * swapchain_lengths[i]);
-		 glGenFramebuffers(swapchain_lengths[i], (*framebuffers)[i]);
-	 }*/
-	/*
-	* framebuffers = (GLuint*) malloc(sizeof(GLuint*) * view_count);
-	for (uint32_t i = 0; i < view_count; i++)
-	{
-		(*framebuffers)[i] = malloc(sizeof(GLuint) * swapchain_lengths[i]);
-		glGenFramebuffers(swapchain_lengths[i], (*framebuffers)[i]);
-	}
-	*/
-}
-
-
-bool openXR_app::prepareGLFramebufer(uint32_t view_count, uint32_t* swapchain_lengths, GLuint*** framebuffers )
+bool openXR_app::prepareGLFramebufer(uint32_t view_count,uint32_t* swapchain_lengths,GLuint*** framebuffers, GLuint* shader_program_id,
+	GLuint* VAO
+)
 {
 	/* Allocate resources that we use for our own rendering.
 	 * We will bind framebuffers to the runtime provided textures for rendering.
 	 * For this, we create one framebuffer per OpenGL texture.
 	 * This is not mandated by OpenXR, other ways to render to textures will work too.
 	 */
-	/**framebuffers = (GLuint**) malloc(sizeof(GLuint*) * view_count);
+	*framebuffers = (GLuint**) malloc(sizeof(GLuint*) * view_count);
 	for (uint32_t i = 0; i < view_count; i++) {
 		(*framebuffers)[i] = (GLuint*) malloc(sizeof(GLuint) * swapchain_lengths[i]);
 		glGenFramebuffers(swapchain_lengths[i], (*framebuffers)[i]);
-	}*/
-	/*
-	*framebuffers = malloc(sizeof(GLuint*) * view_count);
-	for (uint32_t i = 0; i < view_count; i++) 
-	{
-		(*framebuffers)[i] = malloc(sizeof(GLuint) * swapchain_lengths[i]);
-		glGenFramebuffers(swapchain_lengths[i], (*framebuffers)[i]);
 	}
-	*/
-
-//	*framebuffers = (GLuint**) malloc(sizeof(GLuint*) * view_count);
-	//for (uint32_t i = 0; i < view_count; i++) {
-//		(*framebuffers)[i] = (GLuint*) malloc(sizeof(GLuint) * swapchain_lengths[i]);
-	//	glGenFramebuffers(swapchain_lengths[i], (*framebuffers)[i]);
-	//}
-
-
-
 	return 0;
 
 
@@ -137,7 +92,7 @@ bool openXR_app::prepareSwapchain()
     result = xrEnumerateViewConfigurationViews(xr_instance, xr_system_id, app_config_view, view_count, &view_count, xr_config_views.data());
 
 	if (XR_SUCCESS != result) {
-		std::cout << "Failed to get ViewConfigurationViews.  xrEnumerateViewConfigurationViews() returned XrResult :" << result << "\n";
+		printf("Failed to get ViewConfigurationViews.  xrEnumerateViewConfigurationViews() returned XrResult :", result, "\n");
 		return false;
 	};
 
@@ -155,13 +110,8 @@ bool openXR_app::prepareSwapchain()
 		swapchain_info.mipCount = 1;
 		swapchain_info.faceCount = 1;
 		swapchain_info.format = (int64_t)GL_SRGB8_ALPHA8;
-//		swapchain_info.format = (int64_t) GL_SRGB;
-		swapchain_info.width = view.recommendedImageRectWidth; 
-		renderTargetWidth = view.recommendedImageRectWidth;
-		
-		swapchain_info.height = view.recommendedImageRectHeight; 
-		renderTargetHeight = view.recommendedImageRectHeight;
-		
+		swapchain_info.width = view.recommendedImageRectWidth; renderTargetWidth = view.recommendedImageRectWidth;
+		swapchain_info.height = view.recommendedImageRectHeight; renderTargetHeight = view.recommendedImageRectHeight;
 		swapchain_info.sampleCount = view.recommendedSwapchainSampleCount;
 		swapchain_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
 		xrCreateSwapchain(xr_session, &swapchain_info, &handle);
@@ -180,14 +130,11 @@ bool openXR_app::prepareSwapchain()
 		
 		
 		xrEnumerateSwapchainImages(swapchain.handle, swapchain_lengths[i], &swapchain_lengths[i], (XrSwapchainImageBaseHeader*)swapchain.swapchain_images.data());
-
-		prepareGLFramebufer(swapchain_lengths[i], swapchain.glFrameBuffers);
-
+		
 		xr_swapchains.push_back(swapchain);
-
 	}
 	
-	//prepareGLFramebufer(view_count, swapchain_lengths, &gl_rendering.framebuffers, &gl_rendering.shader_program_id, &gl_rendering.VAO);
+	prepareGLFramebufer(view_count, swapchain_lengths, &gl_rendering.framebuffers, &gl_rendering.shader_program_id, &gl_rendering.VAO);
 	
 	return true;
 	
@@ -263,7 +210,7 @@ bool openXR_app::openxr_init(const char* app_name)
 	// needs to install an OpenXR runtime and ensure it's active!
 
 	if (XR_SUCCESS !=  result) {
-		std::cout << "Failed to create XR Instance.  xrCreateInstance() returned XrResult :" << result << "\n";
+		printf("Failed to create XR Instance.  xrCreateInstance() returned XrResult :", result, "\n");
 		return false;
 	}
 	else print_instance_properties(xr_instance);
@@ -359,7 +306,7 @@ bool openXR_app::openxr_init(const char* app_name)
 	sessionInfo.systemId = xr_system_id;
 	result = xrCreateSession(xr_instance, &sessionInfo, &xr_session);
 	if (result != XR_SUCCESS) {
-		std::cout << "Failed to create Session.  xrCreateSession() returned XrResult :" << result << "\n";
+		printf("Failed to create Session.  xrCreateSession() returned XrResult :", result, "\n");
 		return false;
 	}
 	else printf("Successfully created a session with OpenGL!\n");
@@ -404,12 +351,10 @@ void openXR_app::renderFrame()
 	
 	// If the session is active, lets render our layer in the compositor!
 	XrCompositionLayerBaseHeader* layer = nullptr;
-	XrCompositionLayerProjection  layer_proj = { XR_TYPE_COMPOSITION_LAYER_PROJECTION };
+	XrCompositionLayerProjection             layer_proj = { XR_TYPE_COMPOSITION_LAYER_PROJECTION };
 	std::vector<XrCompositionLayerProjectionView> views;
-
 	bool session_active = xr_session_state == XR_SESSION_STATE_VISIBLE || xr_session_state == XR_SESSION_STATE_FOCUSED;
-	if (session_active && renderLayer(frame_state.predictedDisplayTime, views, layer_proj)) 
-	{
+	if (session_active && renderLayer(frame_state.predictedDisplayTime, views, layer_proj)) {
 		layer = (XrCompositionLayerBaseHeader*)&layer_proj;
 	}
 	
@@ -421,14 +366,14 @@ void openXR_app::renderFrame()
 	end_info.layers = &layer;
 	result = xrEndFrame(xr_session, &end_info);
 	if (result != XR_SUCCESS) {
-		std::cout << "Failed to submit frame.  xrEndFrame() returned XrResult :" << result << "\n";
+		printf("Failed to submit frame.  xrEndFrame() returned XrResult :", result, "\n");
 	}
 
 }
 
 
 
-void openXR_app::GLrendering(XrCompositionLayerProjectionView &view, GLuint surface, GLuint swapchainImage, int eye)
+void openXR_app::GLrendering(XrCompositionLayerProjectionView &view, GLuint surface, GLuint swapchainImage, int eye, GLuint shader_program_id, GLuint VAO )
 {
 
 	std::vector<float> rotationMatrix = makeRotationMatrix4x4(make_float4(view.pose.orientation.w, view.pose.orientation.x, view.pose.orientation.y, view.pose.orientation.z));
@@ -443,33 +388,23 @@ void openXR_app::GLrendering(XrCompositionLayerProjectionView &view, GLuint surf
 	m_optixEngine.handleCameraUpdate(&m_camera);
 	
 	m_optixEngine.launchSubframe();
-	sutil::CUDAOutputBuffer<uchar4>* output_buffer = m_optixEngine.GetOutputBuffer();
-	GLenum x = glGetError();
+	sutil::CUDAOutputBuffer<uchar4>& output_buffer = *m_optixEngine.GetOutputBuffer();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, surface);
+	glEnable(GL_TEXTURE_2D);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, swapchainImage, 0);
 	
-
-	glBindFramebuffer(GL_FRAMEBUFFER, m_optixEngine.GetOutputBuffer()->getPBO());
-	x = glGetError();
-
-	//glEnable(GL_TEXTURE_2D); // gl error code 1280!
-	x = glGetError();
-
-	//Used to Crash caused Here 
-	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, swapchainImage, 0);
-	//and sometimes Crash caused Here 
-	//glClear(GL_COLOR_BUFFER_BIT);
- 
+	glClear(GL_COLOR_BUFFER_BIT);
 	glBindTexture(GL_TEXTURE_2D, swapchainImage);
-
-	//Crash Now Caused Here 
-	//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, renderTargetWidth, renderTargetHeight, GL_RGBA, GL_UNSIGNED_BYTE, output_buffer->getHostPointer());
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, renderTargetWidth, renderTargetHeight, GL_RGBA, GL_UNSIGNED_BYTE, output_buffer.getHostPointer());
 	
 	//display left eye view on the desktop window
-	//if(eye == 0){	
-	//	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	//	glBlitFramebuffer(0, 0, 1568, 1568, 0, 0, 1568, 1568, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	if(eye == 0){	
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glBlitFramebuffer(0, 0, 1568, 1568, 0, 0, 1568, 1568, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		
-//	}
-	glfwSwapBuffers(window);
+		glfwSwapBuffers(window);
+	}
 }
 
 bool openXR_app::renderLayer(XrTime predictedTime, std::vector<XrCompositionLayerProjectionView> &views, XrCompositionLayerProjection &layer)
@@ -510,8 +445,7 @@ bool openXR_app::renderLayer(XrTime predictedTime, std::vector<XrCompositionLaye
 		views[i].subImage.imageRect.extent = { xr_swapchains[i].width, xr_swapchains[i].height };
 
 		// Call the rendering callback with our view and swapchain info
-//		openXR_app::GLrendering(views[i], gl_rendering.framebuffers[i][img_id], xr_swapchains[i].swapchain_images[img_id].image, i, gl_rendering.shader_program_id, gl_rendering.VAO);
-		openXR_app::GLrendering(views[i], *(xr_swapchains[i].glFrameBuffers), xr_swapchains[i].swapchain_images[img_id].image, i);
+		openXR_app::GLrendering(views[i], gl_rendering.framebuffers[i][img_id], xr_swapchains[i].swapchain_images[img_id].image, i, gl_rendering.shader_program_id, gl_rendering.VAO);
 
 		// And tell OpenXR we're done with rendering to this one!
 		XrSwapchainImageReleaseInfo release_info = { XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
@@ -569,9 +503,7 @@ bool openXR_app::buildEngine()
 	m_camera.setFovY(60.0f);
 	lookDirection = make_float4(m_camera.direction().x, m_camera.direction().y, m_camera.direction().z, 0);
 	m_camera.setAspectRatio(1);
-
-	//m_optixEngine = RenderEngine::RenderEngine(1568, 1568);
-	m_optixEngine = RenderEngine::RenderEngine(renderTargetWidth, renderTargetHeight);
+	
 	m_optixEngine.buildEngine();
 	m_optixEngine.handleCameraUpdate(&m_camera);
 	

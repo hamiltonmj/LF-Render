@@ -149,20 +149,6 @@ void RenderEngine::handleCameraUpdate(sutil::Camera* cam)
     cam->UVWFrame(m_state.params.U, m_state.params.V, m_state.params.W);
 }
 
-
-void RenderEngine::handleResize( size_t width, size_t height)
-{
-    setDisplayDimensions(width, height);
-    //m_state.params.subframe_index = 0;
-
-    m_output_buffer.resize(m_state.params.width, m_state.params.height);
-
-    // Realloc accumulation buffer
-    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.params.accum_buffer)));
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_state.params.accum_buffer), m_state.params.width * m_state.params.height * sizeof(float4)));
-}
-
-
 void RenderEngine::handleResize()
 {
     //m_state.params.subframe_index = 0;
