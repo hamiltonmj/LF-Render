@@ -157,7 +157,7 @@ void RenderEngine::handleCameraUpdate(sutil::Camera* cam)
     m_state.params.subframe_index = 0;
     cam->setAspectRatio(static_cast<float>(m_state.params.width) / static_cast<float>(m_state.params.height));
     auto x  = cam->eye();
-        m_state.params.eye = cam->eye();
+    m_state.params.eye = cam->eye();
     cam->UVWFrame(m_state.params.U, m_state.params.V, m_state.params.W);
 }
 
@@ -473,12 +473,12 @@ void RenderEngine::createSBT()
 
         //TODO: When adding more then one texture this needs to be adjusted as currently
         // will just update the single hit record for the "last" texture added
-        HitGroupRecord hitgroup_record;
-        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group, &hitgroup_record));
+        //HitGroupRecord hitgroup_record;
+        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group, &m_state.m_hitRecord));
         for (auto texObject : m_state.texObjects)
         {
             auto texture = texObject.second;
-            hitgroup_record.data = texture->toHitRecord();
+            m_state.m_hitRecord.data = texture->toHitRecord();
             std::cout << "H: " << texture->m_height << " W:" << texture->m_width << "\n";
 
         }
@@ -486,7 +486,7 @@ void RenderEngine::createSBT()
         CUdeviceptr d_hitgroup_record;
         size_t      sizeof_hitgroup_record = sizeof(HitGroupRecord);
         CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_hitgroup_record), sizeof_hitgroup_record));
-        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_hitgroup_record), &hitgroup_record, sizeof_hitgroup_record,
+        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_hitgroup_record), &m_state.m_hitRecord, sizeof_hitgroup_record,
             cudaMemcpyHostToDevice));
 
         m_state.sbt.hitgroupRecordBase = d_hitgroup_record;
@@ -494,6 +494,44 @@ void RenderEngine::createSBT()
         m_state.sbt.hitgroupRecordStrideInBytes = static_cast<uint32_t>(sizeof_hitgroup_record);
     }
 }
+
+
+void RenderEngine::updateVideo(size_t currentFrame)
+{
+    std::string name = "f" + std::to_string(currentFrame);
+    size_t      sizeof_hitgroup_record = sizeof(HitGroupRecord);
+
+    auto x = m_state.texObjects.find(name);
+
+    if ( x  != m_state.texObjects.end())
+    {
+        std::shared_ptr<TextureBase> tex =x->second;
+        //HitGroupRecord hitgroup_record;
+        //OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group, &hitgroup_record));
+//        hitgroup_record.data = tex->toHitRecord();
+        m_state.m_hitRecord.data.m_tex = *tex->m_texObject;
+        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(m_state.sbt.hitgroupRecordBase), &m_state.m_hitRecord, sizeof_hitgroup_record,
+            cudaMemcpyHostToDevice));
+    }
+}
+
+
+void RenderEngine::updateVideo(float elapsedTime)
+{
+    //TODO: Investigate if casting to an int is faster, and predictable 
+    float DecimalSec = elapsedTime - std::trunc(elapsedTime);
+
+
+    float FramePerSec = 10;
+    //Currently this is hardcoded for a seven second vido, need to update this eventually
+    float currentSec = ((int)(elapsedTime - DecimalSec) % 7) + DecimalSec;
+   // std::cout << (currentSec * FramePerSec) << " : " << (size_t) (currentSec * FramePerSec) << "\n";
+
+    updateVideo( (size_t) (currentSec * FramePerSec));
+}
+
+
+//RenderEngine::handleTime()
 
 void RenderEngine::createContext()
 {

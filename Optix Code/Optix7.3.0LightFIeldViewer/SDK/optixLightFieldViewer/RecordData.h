@@ -25,3 +25,7 @@ struct Record
     __align__(OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
     T data;
 };
+
+typedef Record<EmptyData>    RayGenRecord;
+typedef Record<EmptyData>    MissRecord;
+typedef Record<HitGroupData> HitGroupRecord;

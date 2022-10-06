@@ -108,3 +108,30 @@ HitGroupData LightFieldData::toHitRecord()
     rec.m_fov = m_fov;
     return rec;
 }
+
+/*
+LFVideoData::LFVideoData(cv::Mat image, unsigned inWidthInHogel, unsigned inHeightInHogel, unsigned infov, int curFrame)
+    : LightFieldData::LightFieldData(image, inWidthInHogel, inHeightInHogel, infov), m_curFrame(curFrame)
+{
+    if (m_heightInHogels < 1)
+    {
+        m_heightInHogels = image.rows;
+    }
+    if (m_widthInHogels < 1)
+    {
+        m_widthInHogels = image.cols;
+    }
+}
+*/
+/*
+class LFVideoData : public LightFieldData
+{
+    unsigned m_widthInHogels;
+    unsigned m_heightInHogels;
+    float m_fov;
+public:
+
+    LFVideoData::LFVideoData(cv::Mat image, unsigned inWidthInHogel = 0, unsigned inHeightInHogel = 0, unsigned infov = 180, size_t curFrame = 0);
+    HitGroupData LFVideoData::toHitRecord();
+};
+*/

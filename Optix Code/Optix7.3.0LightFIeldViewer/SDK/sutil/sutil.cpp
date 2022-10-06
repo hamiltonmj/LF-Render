@@ -407,7 +407,7 @@ void initGLFW()
         throw Exception( "Failed to create GLFW window" );
 
     glfwMakeContextCurrent( window );
-    glfwSwapInterval( 0 );  // No vsync
+    glfwSwapInterval( 0 );  // No vsync || Adjust this to enable/ disable vsync
 }
 
 GLFWwindow* initGLFW( const char* window_title, int width, int height )
@@ -427,7 +427,7 @@ GLFWwindow* initGLFW( const char* window_title, int width, int height )
         throw Exception( "Failed to create GLFW window" );
 
     glfwMakeContextCurrent( window );
-    glfwSwapInterval( 1 );  // No vsync
+    glfwSwapInterval( 0 );  // No vsync || Adjust this to enable/ disable vsync
 
     return window;
 }

@@ -18,7 +18,7 @@ public:
     cudaTextureObject_t* m_texObject;
     unsigned m_width;
     unsigned m_height;
-
+//    HitGroupRecord m_hitRecord; 
     TextureBase(cv::Mat image);
     ~TextureBase();
 
@@ -50,3 +50,14 @@ public:
     LightFieldData::LightFieldData(cv::Mat image,unsigned inWidthInHogel = 0, unsigned inHeightInHogel = 0,unsigned infov = 180);
     HitGroupData LightFieldData::toHitRecord();
 };
+
+/*
+class LFVideoData : public LightFieldData
+{
+    int m_curFrame;
+public:
+
+    LFVideoData::LFVideoData(cv::Mat image, unsigned inWidthInHogel = 0, unsigned inHeightInHogel = 0, unsigned infov = 180, int curFrame = 0);
+    HitGroupData LFVideoData::toHitRecord();
+};
+*/

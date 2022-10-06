@@ -60,6 +60,8 @@
 #include "RecordData.h"
 #include "ctrlMap.h"
 
+#include <cmath>
+
 void lightFieldViewer::initCameraState()
 {
     m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
@@ -87,6 +89,7 @@ void lightFieldViewer::updateState()
         m_optixEngine.handleResize();
         m_resize_dirty = false;
     }
+   // m_optixEngine.handleTime();
 }
 
 void lightFieldViewer::performDescreteControl(int ctrl)
@@ -223,8 +226,8 @@ GLFWwindow* lightFieldViewer::build(sutil::CUDAOutputBufferType bufType, std::st
         m_optixEngine.buildEngine();
         if (file.empty())
         {
-             m_window = sutil::initUI("Real Time Lightfield Render", m_optixEngine.GetDisplayWidth(), m_optixEngine.GetDisplayHeight());
-            // m_window = sutil::initUI("Real Time Lightfield Render", 768, 768);
+             m_window = sutil::initUI("Real Time Lightfield Render", m_optixEngine.GetDisplayWidth(), m_optixEngine.GetDisplayHeight());             
+             // m_window = sutil::initUI("Real Time Lightfield Render", 768, 768);
           //m_optixEngine.buildEngine();
             return m_window;
         }
@@ -273,7 +276,7 @@ void lightFieldViewer::renderLoop()
     {
         
         auto t0 = std::chrono::steady_clock::now();
-        std::chrono::duration<double> elapsedTime = t0 - startTime;
+        std::chrono::duration<double> elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(t0 - startTime);
         glfwPollEvents();
 
         //updateState( output_buffer, state );
@@ -281,6 +284,18 @@ void lightFieldViewer::renderLoop()
         auto t1 = std::chrono::steady_clock::now();
         state_update_time += t1 - t0;
         t0 = t1;
+
+/*
+        float x = elapsedTime.count();
+        float k = x - std::trunc(x);
+        
+        float FramePerSec = 30;
+        float currentSec = ( (int) (x-k) % 7) + k;
+*/
+        //m_optixEngine.updateVideo((float) elapsedTime.count());
+        m_optixEngine.updateVideo((float) glfwGetTime());
+        
+
 
         m_optixEngine.launchSubframe();
         //                  launchSubframe( output_buffer, state );
@@ -308,6 +323,7 @@ void lightFieldViewer::renderLoop()
 
         glfwSwapBuffers(m_window);
 
-        ++m_optixEngine.GetState()->params.subframe_index;
+       // ++m_optixEngine.GetState()->params.subframe_index;
+        m_optixEngine.GetState()->params.subframe_index = 0;
     } while (!glfwWindowShouldClose(m_window));
 }
