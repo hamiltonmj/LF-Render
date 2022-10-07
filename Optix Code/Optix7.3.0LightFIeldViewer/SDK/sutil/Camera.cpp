@@ -28,13 +28,17 @@
 
 
 #include <sutil/Camera.h>
+#include <iostream>
 
 namespace sutil {
 
 void Camera::UVWFrame(float3& U, float3& V, float3& W) const
 {
     W = m_lookat - m_eye; // Do not normalize W -- it implies focal length
-    float wlen = length(W);
+   
+    //float wlen = length(W);
+
+    float wlen = 1.3;
     U = normalize(cross(W, m_up));
     V = normalize(cross(U, W));
 

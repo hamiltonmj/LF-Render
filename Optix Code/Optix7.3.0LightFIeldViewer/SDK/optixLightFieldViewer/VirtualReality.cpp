@@ -15,9 +15,10 @@
 #include <iostream>
 
 
-openXR_app::openXR_app(GLFWwindow* window1)
+openXR_app::openXR_app(GLFWwindow* window1, RenderEngine* m_engine)
 {
 	window = window1;
+	m_optixEngine = *m_engine;
 	glfwMakeContextCurrent(window);
 }
 ////////////////////////////
@@ -59,9 +60,7 @@ bool openXR_app::launchApp()
 
 }
 
-bool openXR_app::prepareGLFramebufer(uint32_t view_count,uint32_t* swapchain_lengths,GLuint*** framebuffers, GLuint* shader_program_id,
-	GLuint* VAO
-)
+bool openXR_app::prepareGLFramebufer(uint32_t view_count,uint32_t* swapchain_lengths,GLuint*** framebuffers)
 {
 	/* Allocate resources that we use for our own rendering.
 	 * We will bind framebuffers to the runtime provided textures for rendering.
@@ -134,7 +133,7 @@ bool openXR_app::prepareSwapchain()
 		xr_swapchains.push_back(swapchain);
 	}
 	
-	prepareGLFramebufer(view_count, swapchain_lengths, &gl_rendering.framebuffers, &gl_rendering.shader_program_id, &gl_rendering.VAO);
+	prepareGLFramebufer(view_count, swapchain_lengths, &gl_rendering.framebuffers);
 	
 	return true;
 	
@@ -373,18 +372,19 @@ void openXR_app::renderFrame()
 
 
 
-void openXR_app::GLrendering(XrCompositionLayerProjectionView &view, GLuint surface, GLuint swapchainImage, int eye, GLuint shader_program_id, GLuint VAO )
+void openXR_app::GLrendering(XrCompositionLayerProjectionView &view, GLuint surface, GLuint swapchainImage, int eye)
 {
 
 	std::vector<float> rotationMatrix = makeRotationMatrix4x4(make_float4(view.pose.orientation.w, view.pose.orientation.x, view.pose.orientation.y, view.pose.orientation.z));
 	float4 newUP = MatrixMul(rotationMatrix, make_float4(0, 1, 0, 0));
 	float4 newLookDirection = MatrixMul(rotationMatrix, lookDirection);
 
-	m_camera.setEye( make_float3(view.pose.position.x, view.pose.position.y, view.pose.position.z ));	
-	m_camera.setFovY((view.fov.angleRight - view.fov.angleLeft) * 180 / M_PI);
+	m_camera.setEye(make_float3(view.pose.position.x, view.pose.position.y, view.pose.position.z));
+	m_camera.setFovY((view.fov.angleUp - view.fov.angleDown) * 180.0f / M_PIf);
 	m_camera.setUp(make_float3(newUP.x, newUP.y, newUP.z));
-	m_camera.setDirection(normalize(make_float3(newLookDirection.x, newLookDirection.y, newLookDirection.z)));
-
+	m_camera.setDirection(make_float3(newLookDirection.x, newLookDirection.y, newLookDirection.z));
+	
+	
 	m_optixEngine.handleCameraUpdate(&m_camera);
 	
 	m_optixEngine.launchSubframe();
@@ -400,9 +400,18 @@ void openXR_app::GLrendering(XrCompositionLayerProjectionView &view, GLuint surf
 	
 	//display left eye view on the desktop window
 	if(eye == 0){	
+		glfwPollEvents();
+		bool changeState = sutil::getChangeState();
+
+		if (changeState)
+		{
+			m_optixEngine.updateTexture(sutil::getCurrFilename());
+		}
+
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-		glBlitFramebuffer(0, 0, 1568, 1568, 0, 0, 1568, 1568, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-		
+		glBlitFramebuffer(0, 0, renderTargetWidth, renderTargetHeight, 0, 0, renderTargetWidth, renderTargetHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		sutil::createGUI();
+		sutil::endFrameImGui();
 		glfwSwapBuffers(window);
 	}
 }
@@ -445,7 +454,7 @@ bool openXR_app::renderLayer(XrTime predictedTime, std::vector<XrCompositionLaye
 		views[i].subImage.imageRect.extent = { xr_swapchains[i].width, xr_swapchains[i].height };
 
 		// Call the rendering callback with our view and swapchain info
-		openXR_app::GLrendering(views[i], gl_rendering.framebuffers[i][img_id], xr_swapchains[i].swapchain_images[img_id].image, i, gl_rendering.shader_program_id, gl_rendering.VAO);
+		openXR_app::GLrendering(views[i], gl_rendering.framebuffers[i][img_id], xr_swapchains[i].swapchain_images[img_id].image, i);
 
 		// And tell OpenXR we're done with rendering to this one!
 		XrSwapchainImageReleaseInfo release_info = { XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
@@ -498,14 +507,12 @@ bool openXR_app::buildEngine()
 {
 	
 	m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
-	m_camera.setLookat(make_float3(0.0f, 0.0f, -1.0f));
+	m_camera.setLookat(make_float3(0.0f, 0.0f, -0.6f));
 	m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));
 	m_camera.setFovY(60.0f);
 	lookDirection = make_float4(m_camera.direction().x, m_camera.direction().y, m_camera.direction().z, 0);
 	m_camera.setAspectRatio(1);
 	
-	m_optixEngine.buildEngine();
-	m_optixEngine.handleCameraUpdate(&m_camera);
 	
 	return true;
 }

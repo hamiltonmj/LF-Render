@@ -80,6 +80,25 @@ extern "C" __global__ void __closesthit__ch1()
     const HitGroupData hitData = *(const HitGroupData*)optixGetSbtDataPointer();
     float2 uv = optixGetTriangleBarycentrics();    
 
+    if ((optixGetPrimitiveIndex() == 2)) 
+    {
+        whitted::setPayloadResult(make_float3(0.0f, 1.0f, 0.0f));
+        return;
+    
+    }
+    if ((optixGetPrimitiveIndex() == 3))
+    {
+        whitted::setPayloadResult(make_float3(1.0f, 1.0f, 0.0f));
+        return;
+
+    }
+    if ((optixGetPrimitiveIndex() == 4))
+    {
+        whitted::setPayloadResult(make_float3(0.0f, 1.0f, 1.0f));
+        return;
+
+    }
+
 
     //uv values are between 0,1 |  0 being left/ top  and 1 being right/bottom
     //Since we have 2 triangles we need to geth them into the same space for referencing the texture
