@@ -522,7 +522,7 @@ void RenderEngine::updateVideo(float elapsedTime)
     float DecimalSec = elapsedTime - std::trunc(elapsedTime);
 
 
-    float FramePerSec = 10;
+    float FramePerSec = 30;
     //Currently this is hardcoded for a seven second vido, need to update this eventually
     float currentSec = ((int)(elapsedTime - DecimalSec) % 7) + DecimalSec;
    // std::cout << (currentSec * FramePerSec) << " : " << (size_t) (currentSec * FramePerSec) << "\n";
