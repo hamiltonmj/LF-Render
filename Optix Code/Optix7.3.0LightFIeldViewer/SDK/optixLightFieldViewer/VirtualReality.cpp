@@ -390,7 +390,7 @@ void openXR_app::GLrendering(XrCompositionLayerProjectionView &view, GLuint surf
 	
 	
 	m_optixEngine.handleCameraUpdate(&m_camera);
-	
+	m_optixEngine.updateVideo((float)glfwGetTime());
 	m_optixEngine.launchSubframe();
 	sutil::CUDAOutputBuffer<uchar4>& output_buffer = *m_optixEngine.GetOutputBuffer();
 
