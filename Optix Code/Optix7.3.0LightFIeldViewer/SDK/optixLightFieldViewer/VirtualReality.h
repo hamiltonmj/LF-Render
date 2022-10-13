@@ -70,7 +70,7 @@ class openXR_app
 
 
 
-	const XrPosef  xr_pose_identity = { {0,0,0,1}, {0,0,0} };
+	const XrPosef  xr_pose_identity = { {0,0.705,0,0.709}, {0,0,0} };
 	XrSpace        xr_app_space = {};
 	std::vector<XrView>                  xr_views;
 	std::vector<XrViewConfigurationView> xr_config_views;

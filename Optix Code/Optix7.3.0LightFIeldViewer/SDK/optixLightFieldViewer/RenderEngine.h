@@ -216,6 +216,13 @@ public:
         m_state.params.height = h;
     }
 
+    /// <summary>
+   /// Updates render engine to render and display at new width and height
+   /// </summary>
+   /// <param name="width"></param>
+   /// <param name="height"></param>
+    void RenderEngine::handleResize(size_t width, size_t height);
+
    
     /// <summary>
     /// Returns the stream optix is using
