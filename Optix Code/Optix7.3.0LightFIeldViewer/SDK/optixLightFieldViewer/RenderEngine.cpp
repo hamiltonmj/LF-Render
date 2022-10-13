@@ -22,7 +22,7 @@
 #include "RecordData.h"
 #include "RenderEngine.h"
 
-
+#include <filesystem.>
 
 RenderEngine::RenderEngine(size_t w, size_t h)
     :m_state(RenderState()), m_output_buffer(sutil::CUDAOutputBufferType::CUDA_DEVICE, w,h)
@@ -74,21 +74,48 @@ void RenderEngine::loadTexture(std::string fileName)
         std::string name;
         unsigned width, height, fov;
         file >> name >> width >> height >> fov;
-        std::cout << "Opening Texture As LightField: " << fileName << "\n";
-        tex = std::make_shared<LightFieldData>(loadImageToRam(name), width, height, fov);
+
+        
+        if (name == "!VIDEO!")
+        {
+            size_t pathEnd = fileName.rfind("\\");
+            pathEnd = (std::string::npos == pathEnd) ? fileName.rfind("/") : pathEnd;
+                
+            fileName = fileName.substr(0, pathEnd);
+            std::vector<cv::String> framePaths;
+            cv::glob(fileName, framePaths, false);
+
+            for (size_t x = 0; x < framePaths.size(); x++)
+            {
+                cv::String imageName = framePaths[x];
+                if (RenderEngine::is_textFile(imageName)) continue;
+
+                std::cout << "Opening Texture As LightField: " << imageName << "\n";
+                tex = std::make_shared<LightFieldData>(loadImageToRam(imageName), width, height, fov);
+
+                    
+                m_state.texObjects.insert({ "f" + std::to_string(x),tex});
+                std::cout << "hi";
+            }
+        }
+        else
+        {
+            std::cout << "Opening Texture As LightField: " << fileName << "\n";
+            tex = std::make_shared<LightFieldData>(loadImageToRam(name), width, height, fov);
+            m_state.texObjects.insert({ fileName,tex });
+        }
     }
     else
     {
         std::cout << "Opening Texture As Image: " << fileName << "\n";
         tex = std::make_shared<TextureData>(loadImageToRam(fileName));
+        m_state.texObjects.insert({ fileName,tex });
     }
-
 
     //TODO: ADD MULTI TEXTURE SUPPORT
     //This will need to be modified once more txtures are added, but also a better referning system will need to be implemented to better control how textures are refernced
     //per face/ object 
     //IE: a factory could be good here
-    m_state.texObjects.insert({ fileName,tex});
 }
 
 
@@ -130,7 +157,7 @@ void RenderEngine::handleCameraUpdate(sutil::Camera* cam)
     m_state.params.subframe_index = 0;
     cam->setAspectRatio(static_cast<float>(m_state.params.width) / static_cast<float>(m_state.params.height));
     auto x  = cam->eye();
-        m_state.params.eye = cam->eye();
+    m_state.params.eye = cam->eye();
     cam->UVWFrame(m_state.params.U, m_state.params.V, m_state.params.W);
 }
 
@@ -474,12 +501,12 @@ void RenderEngine::createSBT()
 
         //TODO: When adding more then one texture this needs to be adjusted as currently
         // will just update the single hit record for the "last" texture added
-        HitGroupRecord hitgroup_record;
-        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group, &hitgroup_record));
+        //HitGroupRecord hitgroup_record;
+        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group, &m_state.m_hitRecord));
         for (auto texObject : m_state.texObjects)
         {
             auto texture = texObject.second;
-            hitgroup_record.data = texture->toHitRecord();
+            m_state.m_hitRecord.data = texture->toHitRecord();
             std::cout << "H: " << texture->m_height << " W:" << texture->m_width << "\n";
 
         }
@@ -487,7 +514,7 @@ void RenderEngine::createSBT()
         CUdeviceptr d_hitgroup_record;
         size_t      sizeof_hitgroup_record = sizeof(HitGroupRecord);
         CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_hitgroup_record), sizeof_hitgroup_record));
-        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_hitgroup_record), &hitgroup_record, sizeof_hitgroup_record,
+        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_hitgroup_record), &m_state.m_hitRecord, sizeof_hitgroup_record,
             cudaMemcpyHostToDevice));
 
         m_state.sbt.hitgroupRecordBase = d_hitgroup_record;
@@ -495,6 +522,44 @@ void RenderEngine::createSBT()
         m_state.sbt.hitgroupRecordStrideInBytes = static_cast<uint32_t>(sizeof_hitgroup_record);
     }
 }
+
+
+void RenderEngine::updateVideo(size_t currentFrame)
+{
+    std::string name = "f" + std::to_string(currentFrame);
+    size_t      sizeof_hitgroup_record = sizeof(HitGroupRecord);
+
+    auto x = m_state.texObjects.find(name);
+
+    if ( x  != m_state.texObjects.end())
+    {
+        std::shared_ptr<TextureBase> tex =x->second;
+        //HitGroupRecord hitgroup_record;
+        //OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group, &hitgroup_record));
+//        hitgroup_record.data = tex->toHitRecord();
+        m_state.m_hitRecord.data.m_tex = *tex->m_texObject;
+        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(m_state.sbt.hitgroupRecordBase), &m_state.m_hitRecord, sizeof_hitgroup_record,
+            cudaMemcpyHostToDevice));
+    }
+}
+
+
+void RenderEngine::updateVideo(float elapsedTime)
+{
+    //TODO: Investigate if casting to an int is faster, and predictable 
+    float DecimalSec = elapsedTime - std::trunc(elapsedTime);
+
+
+    float FramePerSec = 30;
+    //Currently this is hardcoded for a seven second vido, need to update this eventually
+    float currentSec = ((int)(elapsedTime - DecimalSec) % 7) + DecimalSec;
+   // std::cout << (currentSec * FramePerSec) << " : " << (size_t) (currentSec * FramePerSec) << "\n";
+
+    updateVideo( (size_t) (currentSec * FramePerSec));
+}
+
+
+//RenderEngine::handleTime()
 
 void RenderEngine::createContext()
 {

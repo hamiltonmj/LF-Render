@@ -60,16 +60,22 @@
 #include "RecordData.h"
 #include "ctrlMap.h"
 
+#include <cmath>
+
 void lightFieldViewer::initCameraState()
 {
     m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
+<<<<<<< HEAD
     m_camera.setLookat(make_float3(0.0f, 0.0f, -1.0f/10));
+=======
+    m_camera.setLookat(make_float3(0.0f, 0.0f, -3.0f));
+>>>>>>> lFVideo
     m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));
     m_camera.setFovY(60.0f);
     m_camera_changed = true;
 
     m_trackball.setCamera(&m_camera);
-    m_trackball.setMoveSpeed(10.0f);
+    m_trackball.setMoveSpeed(0.3f);
     m_trackball.setReferenceFrame(make_float3(1.0f, 0.0f, 0.0f), make_float3(0.0f, 0.0f, 1.0f), make_float3(0.0f, 1.0f, 0.0f));
     m_trackball.setGimbalLock(true);
 }
@@ -87,11 +93,13 @@ void lightFieldViewer::updateState()
         m_optixEngine.handleResize();
         m_resize_dirty = false;
     }
+   // m_optixEngine.handleTime();
 }
 
 void lightFieldViewer::performDescreteControl(int ctrl)
 {
-    float moveRatio = 10 * m_shifted;
+    
+    float moveRatio = 100 * m_shifted;
     switch (ctrl)
     {
     case ctrlMap::ctrls::exit:
@@ -222,8 +230,8 @@ GLFWwindow* lightFieldViewer::build(sutil::CUDAOutputBufferType bufType, std::st
         m_optixEngine.buildEngine();
         if (file.empty())
         {
-             m_window = sutil::initUI("Real Time Lightfield Render", m_optixEngine.GetDisplayWidth(), m_optixEngine.GetDisplayHeight());
-            // m_window = sutil::initUI("Real Time Lightfield Render", 768, 768);
+             m_window = sutil::initUI("Real Time Lightfield Render", m_optixEngine.GetDisplayWidth(), m_optixEngine.GetDisplayHeight());             
+             // m_window = sutil::initUI("Real Time Lightfield Render", 768, 768);
           //m_optixEngine.buildEngine();
             return m_window;
         }
@@ -267,11 +275,12 @@ void lightFieldViewer::renderLoop()
     std::chrono::duration<double> display_time(0.0);
     //m_optixEngine.setOutputBuffer(sutil::CUDAOutputBufferType::GL_INTEROP);
     sutil::GLDisplay gl_display;
-
+    auto startTime = std::chrono::steady_clock::now();
     do
     {
+        
         auto t0 = std::chrono::steady_clock::now();
-
+        std::chrono::duration<double> elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(t0 - startTime);
         glfwPollEvents();
 
         //updateState( output_buffer, state );
@@ -279,6 +288,18 @@ void lightFieldViewer::renderLoop()
         auto t1 = std::chrono::steady_clock::now();
         state_update_time += t1 - t0;
         t0 = t1;
+
+/*
+        float x = elapsedTime.count();
+        float k = x - std::trunc(x);
+        
+        float FramePerSec = 30;
+        float currentSec = ( (int) (x-k) % 7) + k;
+*/
+        //m_optixEngine.updateVideo((float) elapsedTime.count());
+        m_optixEngine.updateVideo((float) glfwGetTime());
+        
+
 
         m_optixEngine.launchSubframe();
         //                  launchSubframe( output_buffer, state );
@@ -306,6 +327,7 @@ void lightFieldViewer::renderLoop()
 
         glfwSwapBuffers(m_window);
 
-        ++m_optixEngine.GetState()->params.subframe_index;
+       // ++m_optixEngine.GetState()->params.subframe_index;
+        m_optixEngine.GetState()->params.subframe_index = 0;
     } while (!glfwWindowShouldClose(m_window));
 }

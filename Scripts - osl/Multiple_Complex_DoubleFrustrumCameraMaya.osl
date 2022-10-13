@@ -40,7 +40,7 @@ shader OslCamera(
 
     int curHogel[2];
     curHogel[0] = (int)floor(((float)pixelXY[0]) / resolutionPerHogel[0]);
-    curHogel[1] = (int)floor((pixelXY[1]) / resolutionPerHogel[1]);
+    curHogel[1] = (int)floor(((float)pixelXY[1]) / resolutionPerHogel[1]);
 
 //////////////////////////////////////////////////////////////////////////////////////////
 

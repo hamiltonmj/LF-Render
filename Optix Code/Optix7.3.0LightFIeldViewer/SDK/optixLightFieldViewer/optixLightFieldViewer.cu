@@ -117,7 +117,7 @@ extern "C" __global__ void __closesthit__ch1()
     //IF the viewing angle is outside the capture views of the lightfield black the pixel out
     if (horizontalAngle >= 1 || verticalAngle >= 1 || horizontalAngle < 0 || verticalAngle < 0)
     {
-        whitted::setPayloadResult(make_float3(0, 0, 0));
+        whitted::setPayloadResult(make_float3(0, 10, 0));
         return;
     }
                
