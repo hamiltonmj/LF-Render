@@ -281,6 +281,7 @@ void lightFieldViewer::renderLoop()
 
         //updateState( output_buffer, state );
         updateState();
+        m_optixEngine.updateVideo((float)glfwGetTime());
         auto t1 = std::chrono::steady_clock::now();
         state_update_time += t1 - t0;
         t0 = t1;
@@ -292,10 +293,7 @@ void lightFieldViewer::renderLoop()
         float FramePerSec = 30;
         float currentSec = ( (int) (x-k) % 7) + k;
 */
-        //m_optixEngine.updateVideo((float) elapsedTime.count());
-        m_optixEngine.updateVideo((float) glfwGetTime());
-        
-
+        //m_optixEngine.updateVideo((float) elapsedTime.count());        
 
         m_optixEngine.launchSubframe();
         //                  launchSubframe( output_buffer, state );

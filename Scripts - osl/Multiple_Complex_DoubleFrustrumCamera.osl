@@ -78,8 +78,8 @@ shader OslCamera(
     // Converts the hogelCoordinates into a system based on a new range of (-1.0 -> 1.0)
     //Since we want the values of -1 and 1 to represent the outer edges of the capture plane
     float hogelCoordinatePercent[2];
-    hogelCoordinatePercent[0] = 2 * ((float)hogelCoordinate[0] / resolutionPerHogel[0]);
-    hogelCoordinatePercent[1] = 2 * ((float)hogelCoordinate[1] / resolutionPerHogel[1]);
+    hogelCoordinatePercent[0] = 2 *  ((float)hogelCoordinate[0] / resolutionPerHogel[0]);
+    hogelCoordinatePercent[1] = 2 * -((float)hogelCoordinate[1] / resolutionPerHogel[1]);
 
     //Given a Fov, this computes the the maximum distance in the x,y plane from the center of the fov, any ray will travel, given the focal length is one
     float tanHalfFov = tan(radians(fov/2));
