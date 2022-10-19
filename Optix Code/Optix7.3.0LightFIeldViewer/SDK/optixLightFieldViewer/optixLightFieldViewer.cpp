@@ -65,11 +65,11 @@
 void lightFieldViewer::initCameraState()
 {
     m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
-<<<<<<< HEAD
+
     m_camera.setLookat(make_float3(0.0f, 0.0f, -1.0f/10));
-=======
+
     m_camera.setLookat(make_float3(0.0f, 0.0f, -3.0f));
->>>>>>> lFVideo
+
     m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));
     m_camera.setFovY(60.0f);
     m_camera_changed = true;
