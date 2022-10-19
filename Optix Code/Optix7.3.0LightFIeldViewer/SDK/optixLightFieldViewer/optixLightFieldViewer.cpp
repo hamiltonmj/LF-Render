@@ -65,7 +65,11 @@
 void lightFieldViewer::initCameraState()
 {
     m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
+<<<<<<< HEAD
+    m_camera.setLookat(make_float3(0.0f, 0.0f, -1.0f/10));
+=======
     m_camera.setLookat(make_float3(0.0f, 0.0f, -3.0f));
+>>>>>>> lFVideo
     m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));
     m_camera.setFovY(60.0f);
     m_camera_changed = true;
@@ -100,7 +104,7 @@ void lightFieldViewer::performDescreteControl(int ctrl)
     {
     case ctrlMap::ctrls::exit:
         std::cout << "Hello VR, exit! \n";
-       // glfwSetWindowShouldClose(m_window, true);
+        glfwSetWindowShouldClose(m_window, true);
         break;
 
     case ctrlMap::ctrls::forward:
@@ -315,7 +319,7 @@ void lightFieldViewer::renderLoop()
         }
 
         if (sutil::get_launchVR()) {
-            openXR_app app(m_window);
+            openXR_app app(m_window, &m_optixEngine);
             app.launchApp();
         }
 

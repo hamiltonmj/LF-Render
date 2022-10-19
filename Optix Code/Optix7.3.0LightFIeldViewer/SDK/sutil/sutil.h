@@ -103,7 +103,7 @@ SUTILAPI GLFWwindow* initGLFW( const char* window_title, int width, int height )
 SUTILAPI void        initImGui( GLFWwindow* window );
 SUTILAPI GLFWwindow* initUI( const char* window_title, int width, int height );
 SUTILAPI void        cleanupUI( GLFWwindow* window );
-
+SUTILAPI void        createGUI();
 SUTILAPI void        beginFrameImGui();
 SUTILAPI void        endFrameImGui();
 

@@ -232,16 +232,44 @@ void RenderEngine::createGeometry()
 
         // To ADD Triangles to be rendered simply add them to the vertices array and change the size of the array to match the new inputs 
         // Triangle build input: simple list of three vertices
-        const std::array<float3, 6> vertices =
-        { {
-                { -1.0f / 10, -1.0f / 10, -3.0f },
-                {  1.0f / 10, -1.0f / 10, -3.0f },
-                { -1.0f / 10,  1.0f / 10, -3.0f },
+         /*{ -1.0f, -1.0f , -3.0f },
+                {  1.0f, -1.0f , -3.0f },
+                { -1.0f,  1.0f , -3.0f},
 
-                {  1.0f / 10,  1.0f / 10, -3.0f },
-                { -1.0f / 10,  1.0f / 10, -3.0f },
-                {  1.0f / 10, -1.0f / 10, -3.0f }
-        } };
+                {  1.0f,  1.0f , -3.0f },
+                { -1.0,  1.0f  , -3.0f },
+                {  1.0f, -1.0f , -3.0f }*/
+        const std::array<float3, 15> vertices =
+        { {
+               
+                  { -1.0f / 10, -1.0f / 10 , -6.0f / 10 },
+                  {  1.0f / 10, -1.0f / 10 , -6.0f / 10},
+                  { -1.0f / 10,  1.0f / 10 , -6.0f / 10},
+
+                  {  1.0f / 10,  1.0f / 10 , -6.0f / 10},
+                  { -1.0 / 10,  1.0f / 10  , -6.0f / 10},
+                  {  1.0f / 10, -1.0f / 10 , -6.0f / 10},
+       
+                //refrence triangle
+                // left
+                { -1.0f ,  0.0f , 0.0f },
+                { -1.0f  ,  1.0f , 0.0f},
+                {  -1.0f , 0.0f , 1.0f},
+
+                // right
+                {  1.0f ,  0.0f , 0.0f },
+                {   1.0f,  1.0f , 0.0f},
+                {   1.0f , 0.0f , 1.0f},
+
+                // back
+               {  0.0f ,  0.0f , 1.0f},
+               { 1.0f  ,  0.0f ,  1.0f},
+               {  0.0f , 1.0f ,  1.0f}
+
+            } 
+        
+
+        };
 
         
         const size_t vertices_size = sizeof(float3) * vertices.size();

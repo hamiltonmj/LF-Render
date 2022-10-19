@@ -60,6 +60,7 @@ public:
     SUTILAPI void setFovY(const float& val) { m_fovY = val; }
     SUTILAPI const float& aspectRatio() const { return m_aspectRatio; }
     SUTILAPI void setAspectRatio(const float& val) { m_aspectRatio = val; }
+    SUTILAPI void setDirection(const float3& dir, float focal) { m_lookat = m_eye + focal * dir; }
 
     // UVW forms an orthogonal, but not orthonormal basis!
     SUTILAPI void UVWFrame(float3& U, float3& V, float3& W) const;
