@@ -232,45 +232,39 @@ void RenderEngine::createGeometry()
 
         // To ADD Triangles to be rendered simply add them to the vertices array and change the size of the array to match the new inputs 
         // Triangle build input: simple list of three vertices
-         /*{ -1.0f, -1.0f , -3.0f },
-                {  1.0f, -1.0f , -3.0f },
-                { -1.0f,  1.0f , -3.0f},
 
-                {  1.0f,  1.0f , -3.0f },
-                { -1.0,  1.0f  , -3.0f },
-                {  1.0f, -1.0f , -3.0f }*/
-        const std::array<float3, 15> vertices =
+        float w, h, d;
+        float3 Pos = make_float3(0, 0, 0);
+
+        w = 0.2f;
+        h = 0.2f;
+        d = -3.0f;
+
+        float halfW = w / 2;
+        float halfH = h / 2;
+
+        const std::array<float3, 6> vertices =
         { {
-               
-                  { -1.0f / 10, -1.0f / 10 , -6.0f / 10 },
-                  {  1.0f / 10, -1.0f / 10 , -6.0f / 10},
-                  { -1.0f / 10,  1.0f / 10 , -6.0f / 10},
+                make_float3( -halfW, -halfH, d) + Pos,
+                make_float3(  halfW, -halfH, d) + Pos,
+                make_float3( -halfW,  halfH, d) + Pos,
 
-                  {  1.0f / 10,  1.0f / 10 , -6.0f / 10},
-                  { -1.0 / 10,  1.0f / 10  , -6.0f / 10},
-                  {  1.0f / 10, -1.0f / 10 , -6.0f / 10},
-       
-                //refrence triangle
-                // left
-                { -1.0f ,  0.0f , 0.0f },
-                { -1.0f  ,  1.0f , 0.0f},
-                {  -1.0f , 0.0f , 1.0f},
+                make_float3(  halfW,  halfH, d) + Pos,
+                make_float3( -halfW,  halfH, d) + Pos,
+                make_float3(  halfW, -halfH, d) + Pos
+        } };
+/*
+        const std::array<float3, 6> vertices =
+        { {
+                { -1.0f / 10, -1.0f / 10, -3.0f },
+                {  1.0f / 10, -1.0f / 10, -3.0f },
+                { -1.0f / 10,  1.0f / 10, -3.0f },
 
-                // right
-                {  1.0f ,  0.0f , 0.0f },
-                {   1.0f,  1.0f , 0.0f},
-                {   1.0f , 0.0f , 1.0f},
-
-                // back
-               {  0.0f ,  0.0f , 1.0f},
-               { 1.0f  ,  0.0f ,  1.0f},
-               {  0.0f , 1.0f ,  1.0f}
-
-            } 
-        
-
-        };
-
+                {  1.0f / 10,  1.0f / 10, -3.0f },
+                { -1.0f / 10,  1.0f / 10, -3.0f },
+                {  1.0f / 10, -1.0f / 10, -3.0f }
+        } };
+*/
         
         const size_t vertices_size = sizeof(float3) * vertices.size();
         CUdeviceptr d_vertices = 0;

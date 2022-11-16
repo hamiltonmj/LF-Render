@@ -98,6 +98,13 @@ namespace sutil
     bool launch_VR;
     
 
+    float newCamPos[4] = { 0.0f, 0.0f, 0.0f,0.0f };
+    bool updateCamPos = false;
+
+    float newLookAt[4] = { 0.0f, 0.0f, 0.0f,0.0f };
+    bool updateLookAt = false;
+
+
 static void errorCallback( int error, const char* description )
 {
     std::cerr << "GLFW Error " << error << ": " << description << std::endl;
@@ -762,18 +769,45 @@ void createGUI() {
         bool inputText = false;
         changeState = false;
         is_textFile = false;
+        updateCamPos = false;
+        updateLookAt = false;
 
-        ImGui::SetNextWindowPos(ImVec2(10.0f, 100.0f));
-        ImGui::SetNextWindowSize(ImVec2(300.0f, 250.0f));
-        ImGui::Begin("Launch a new simulation.");
+
+        ImGui::SetNextWindowPos(ImVec2(10.0f, 120.0f));
+        ImGui::SetNextWindowSize(ImVec2(200.0f, 150.0f));
+        ImGui::Begin("Options");
+
+        ImGui::Text("Update Position");
+
+        ImGui::InputFloat3("Pos", newCamPos);
+        if (ImGui::Button("Update Pos"))
+        {
+            updateCamPos = true;
+        }
+
+        ImGui::Text("Update lookAt");
+
+        ImGui::InputFloat3("At", newLookAt);
+        if (ImGui::Button("Update At"))
+        {
+            updateLookAt = true;
+        }
+
+
+
         ImGui::Text("Select file.");
-
-        if (ImGui::Button("open")) {
+        if (ImGui::Button("open")) 
+        {
             open = true;
         }
 
-        ImGui::Text(filename.c_str());
-        
+        ImGui::Text("VR Options");
+        if (ImGui::Button("Lanch VR")) 
+        {
+            launch_VR = true;
+        }
+
+        ImGui::Text(filename.c_str());                                       
         ImGui::End();
 
         if (open)
@@ -792,7 +826,7 @@ void createGUI() {
         }
         
     }
-    
+/*
     {
         ImGui::SetNextWindowPos(ImVec2(10.0f, 450.0f));
         ImGui::SetNextWindowSize(ImVec2(300.0f, 250.0f));
@@ -802,6 +836,7 @@ void createGUI() {
         }
         ImGui::End();
     }
+*/
 }
 
 
@@ -829,11 +864,27 @@ bool get_launchVR()
 {   
     return launch_VR;
 }
-
+bool isUpdatedCamPos()
+{
+    return updateCamPos;
+}
+float* getUpdatedCamPos()
+{
+    return newCamPos;
+}
+bool isUpdatedLookAt()
+{
+    return updateLookAt;
+}
+float* getUpdatedLookAt()
+{
+    return newLookAt;
+}
 
 void displayStats( std::chrono::duration<double>& state_update_time,
                           std::chrono::duration<double>& render_time,
-                          std::chrono::duration<double>& display_time )
+                          std::chrono::duration<double>& display_time, 
+                          float3 CamPos)
 {
     constexpr std::chrono::duration<double> display_update_min_interval_time( 0.5 );
     static int32_t                          total_subframe_count = 0;
@@ -865,9 +916,26 @@ void displayStats( std::chrono::duration<double>& state_update_time,
         last_update_frames = 0;
         state_update_time = render_time = display_time = std::chrono::duration<double>::zero();
     }
-    displayText( display_text, 10.0f, 10.0f );
 
+    float x = 10.0;
+    float y = 10.0;
+    ImGui::SetNextWindowBgAlpha(0.0f);
+    ImGui::SetNextWindowPos(ImVec2(x, y));
+    ImGui::Begin("TextOverlayFG", nullptr,
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+        | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings );
+
+    ImGui::TextColored(ImColor(0.7f, 0.7f, 0.7f, 1.0f), "%s", display_text);
+    float camPos[4] = { CamPos.x, CamPos.y, CamPos.z,0.0f };
+    ImGui::InputFloat3("Cam Pos", camPos);    
+        
+    ImGui::End();
+
+
+    //displayText( display_text, 10.0f, 10.0f );
     
+    //ImGui::TextColored(ImColor(0.7f, 0.7f, 0.7f, 1.0f), "%s", text);
+
 
     endFrameImGui();
 
