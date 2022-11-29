@@ -28,6 +28,7 @@
 
 
 #pragma once
+//#include "sutil/Camera.h" 
 
 #include <cuda_runtime.h>
 
@@ -113,7 +114,8 @@ SUTILAPI void displayFPS( unsigned total_frame_count );
 
 SUTILAPI void displayStats( std::chrono::duration<double>& state_update_time,
                             std::chrono::duration<double>& render_time,
-                            std::chrono::duration<double>& display_time );
+                            std::chrono::duration<double>& display_time,
+                            float3 camPos);
 
 //get filename loaded
 SUTILAPI std::string getCurrFilename();
@@ -132,6 +134,15 @@ SUTILAPI bool Get_is_ImGuiActive();
 
 //if launchVR button is pressed or not
 SUTILAPI bool get_launchVR();
+
+//get UpdatedCamPos
+SUTILAPI bool isUpdatedCamPos();
+SUTILAPI float* getUpdatedCamPos();
+
+//get Updated look at
+SUTILAPI bool isUpdatedLookAt();
+SUTILAPI float* getUpdatedLookAt();
+
 
 // Display a short string starting at x,y.
 SUTILAPI void displayText( const char* text, float x, float y );

@@ -309,18 +309,31 @@ void lightFieldViewer::renderLoop()
         t1 = std::chrono::steady_clock::now();
         display_time += t1 - t0;
 
-        sutil::displayStats(state_update_time, render_time, display_time);
-
-        bool changeState = sutil::getChangeState();
+        //m_optixEngine.GetState.
         
-        if (changeState)
+        sutil::displayStats(state_update_time, render_time, display_time, m_camera.eye());
+
+        if (sutil::getChangeState())
         {
             performDescreteControl(m_ctrlMapping.getctrl(std::pair<int, int>(-6, 1)));
         }
-
-        if (sutil::get_launchVR()) {
+        if (sutil::get_launchVR()) 
+        {
             openXR_app app(m_window, &m_optixEngine);
             app.launchApp();
+        }
+
+        if (sutil::isUpdatedCamPos())
+        {
+            float* x = sutil::getUpdatedCamPos();
+            m_camera.setEye(make_float3( x[0], x[1], x[2]));
+            m_camera_changed = true;        
+        }
+        if (sutil::isUpdatedLookAt())
+        {
+            float* x = sutil::getUpdatedLookAt();
+            m_camera.setLookat(make_float3(x[0], x[1], x[2]));
+            m_camera_changed = true;
         }
 
         glfwSwapBuffers(m_window);

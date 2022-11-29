@@ -8,8 +8,8 @@ shader OslCamera(
     int numHogelX = 1 [[string widget = "number", float min= 1, string page = "Hogel Options", string label = "Number of columns of hogels"]],
     int numHogelY = 1 [[string widget = "number", float min= 1, string page = "Hogel Options", string label = "Number of rows of hogels"]],
 
-    float CaptureWidth = 1 [[string widget = "number", float min= 0.1, string page = "Capture Region", string label = "Capture Width"]],
-    float CaptureHeight = 1 [[string widget = "number", float min= 0.1, string page = "Capture Region", string label = "Capture Height"]],
+    float CaptureWidth = 1.0 [[string widget = "number", float min= 0.1, string page = "Capture Region", string label = "Capture Width"]],
+    float CaptureHeight = 1.0 [[string widget = "number", float min= 0.1, string page = "Capture Region", string label = "Capture Height"]],
 
 
     output point pos = 0,
@@ -25,22 +25,25 @@ shader OslCamera(
     getattribute("camera:resolution", sceneResolution);
 
     int pixelXY[2];
+    //float pixelXY[2];
     getattribute("pixel:pos", pixelXY);
+    //getattribute("hit:uv", pixelXY);
 
     int resolutionPerHogel[2];
     resolutionPerHogel[0] = (int)floor((float)sceneResolution[0] / numHogelX);
     resolutionPerHogel[1] = (int)floor((float)sceneResolution[1] / numHogelY);
 
     //Shift to allow our viewing region to have its (0, 0) coordinate in the center of the region
-    float widthShift = floor(0.5 * sceneResolution[0]);
-    float heightShift = floor(0.5 * sceneResolution[1]);
+  //  float widthShift = floor(0.5 * sceneResolution[0]);
+  //  float heightShift = floor(0.5 * sceneResolution[1]);
 
     //Potential area for problem look at when testing
     //pixelXY[1] = sceneResolution[1] - pixelXY[1];
 
+    //Hogels go from 0 -> (n-1)
     int curHogel[2];
-    curHogel[0] = (int)floor(((float)pixelXY[0]) / resolutionPerHogel[0]);
-    curHogel[1] = (int)floor(((float)pixelXY[1]) / resolutionPerHogel[1]);
+    curHogel[0] = (int)floor(((float)pixelXY[0]) / (float) resolutionPerHogel[0]);
+    curHogel[1] = (int)floor(((float)pixelXY[1]) / (float) resolutionPerHogel[1]);
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -49,22 +52,24 @@ shader OslCamera(
     float posXChangePerHogel = 0;
     float posYChangePerHogel = 0;
 
-    //Check needed as if we allow any vlaue less then one we either get division by zero  or negative number which both will produce errors
+    //Check needed as if we allow any value less then one we either get division by zero  or negative number which will produce errors
     if( numHogelX > 1 )
     {
-        posXChangePerHogel = CaptureWidth / (numHogelX);
+        posXChangePerHogel = CaptureWidth / (float) (numHogelX - 1);
     }
     if( numHogelY > 1 )
     {
-        posYChangePerHogel = CaptureHeight / (numHogelY);
+        posYChangePerHogel = CaptureHeight / (float) (numHogelY - 1);
     }
 
     //we first shift the pos of the ray to the hogel we are in, then we need to shift it to the middle of that hogel
-    vector newPos = vector( posXChangePerHogel * curHogel[0] + (0.5 * posXChangePerHogel) , posYChangePerHogel * curHogel[1] + (0.5 * posYChangePerHogel) , 0);
-
+  //  vector newPos = vector( posXChangePerHogel * (float) curHogel[0], posYChangePerHogel * (float) curHogel[1], 0);
+    
+    point newPos = point( posXChangePerHogel * (float) curHogel[0], posYChangePerHogel * (float) curHogel[1], 0);
     //sets the focal point  to the center of the current hogel the ray belongs too.
-    pos = P + transform("camera", "world", newPos);
-
+//    pos = P + transform("camera", "world", newPos);
+    
+    //pos = transform("camera", "world", newPos);
 //////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -94,7 +99,8 @@ shader OslCamera(
 
     //With the now determined new direction for the ray to be pointed, we now adjust for the fact that the position was calculate relative to the 
     //newPos of the hogel we are working in and not 0,0 so we simply shift the ray by the same value to center it on the hogels center
-    dir = newPos + vector(u1, v1, -1.0);
+   // dir = newPos + vector(u1, v1, -1.0);
+    dir = vector(u1, v1, -1.0);
 
     //This is used to allow the creation of the dobule frustrum
     vector dirNormalized = normalize(dir);
@@ -103,7 +109,9 @@ shader OslCamera(
 
     //To allow the double frustrum behaviour we move our pos in the direction opposite of the rays direction
     // By using inBehindDist and the normalized direction we can set our distance away by parameter
-    pos = pos - transform("camera", "world",(dirNormalized * inBehindDist));
-
+//    pos = pos - transform("camera", "world",(dirNormalized * inBehindDist));
+    pos = transform("camera", "world", newPos + (dirNormalized * inBehindDist));
+//    dir = transform("camera", "world", dir);
     dir = transform("camera", "world", dir);
+
 }
