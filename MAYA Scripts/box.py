@@ -1,5 +1,24 @@
 import maya.cmds as cmds
 import math
+import time
+import configparser
+
+
+timeStart = time.time()
+config = configparser.ConfigParser()
+config.read("config.cfg")
+x=int(config["Input"]["x"])
+y=int(config["Input"]["y"])
+start_x=int(config["Input"]["start_x"])
+start_y=int(config["Input"]["start_y"])
+spacingFactor=int(config["Input"]["spacingFactor"])
+d=int(config["Input"]["d"])
+rot_x=int(config["Input"]["rot_x"])
+rot_y=int(config["Input"]["rot_y"])
+rot_z=int(config["Input"]["rot_z"])
+
+
+
 
 def makeSquare(x,y,cam_x,cam_y):
     cmds.curve(n='a',p=[(x,y,0),(x,y+cam_y,0)])
@@ -12,7 +31,7 @@ def makeSquare(x,y,cam_x,cam_y):
    
 
 def makeView(d,thetaX,thetaY,cam_x,cam_y,start_x,start_y):
-    
+       
     k=(math.tan(math.radians(thetaX)/2))*d
     l=(math.tan(math.radians(thetaY)/2))*d
    
@@ -42,7 +61,8 @@ def makeGrid(x,y,start_x,start_y,spacingFactor):
         result=cmds.camera()
         
         transformName=result[0]
-        cameraGroup= cmds.group(empty= True, name='cameraGroup')    
+        cameraGroup= cmds.group(empty= True, name='cameraGroup')
+            
         for i in range(0,x):
             
             for j in range(0,y): 
@@ -54,7 +74,7 @@ def makeGrid(x,y,start_x,start_y,spacingFactor):
         cmds.delete(result[0])   
    
 
-def makeCamView(x,y,start_x,start_y,spacingFactor,d,thetaX,thetaY):
+def makeCamView(x,y,start_x,start_y,spacingFactor,d,thetaX,thetaY,rot_x,rot_y,rot_z):
 
    
        makeGrid(x,y,start_x,start_y,spacingFactor)
@@ -63,8 +83,6 @@ def makeCamView(x,y,start_x,start_y,spacingFactor,d,thetaX,thetaY):
        makeSquare(start_x,start_y,cam_x,cam_y)
        makeView(d,thetaX,thetaY,cam_x,cam_y,start_x,start_y)
        compPack=cmds.group('box','instanceA','cameraGroup',name='compPack')
-       
-       
-        
-makeCamView(1,1,0,0,2,20,70,70)
-cmds.rotate(0,20,20,'compPack')
+       cmds.rotate(rot_x,rot_y,rot_z,'compPack')
+                    
+makeCamView(x,y,start_x,start_y,spacingFactor,d,thetaX,thetaY,rot_x,rot_y,rot_z)
