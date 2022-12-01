@@ -3,20 +3,30 @@ import math
 import time
 import configparser
 
-#Accessing variables from rhe config file
+#Accessing variables from the config file
+
 
 timeStart = time.time()
 config = configparser.ConfigParser()
-config.read("config.cfg")
+print(config.read("C:\\Users\\Woody\\Documents\\GitHub\\LF-Render\\MAYA Scripts\\conf.cfg"))
+
 x=int(config["Input"]["x"])
 y=int(config["Input"]["y"])
+
 start_x=int(config["Input"]["start_x"])
 start_y=int(config["Input"]["start_y"])
+
+thetaX=int(config["Input"]["thetaX"])
+thetaY=int(config["Input"]["thetaY"])
+
 spacingFactor=int(config["Input"]["spacingFactor"])
+
 d=int(config["Input"]["d"])
+
 rot_x=int(config["Input"]["rot_x"])
 rot_y=int(config["Input"]["rot_y"])
 rot_z=int(config["Input"]["rot_z"])
+
 
 #Function to make a square around the camera grid
 
@@ -26,7 +36,7 @@ def makeSquare(x,y,cam_x,cam_y):
     cmds.curve(n='c',p=[(x+cam_x,y,0),(x+cam_x,y+cam_y,0)])
     cmds.curve(n='d',p=[(x+cam_x,y+cam_y,0),(x,y+cam_y,0)])
     
-    cmds.group( 'a','b','c','d', name='box',w=1 )
+    cmds.group( 'a','b','c','d', name='box')
     
    
 #Function to make the relative frustums for the camera grid
@@ -80,7 +90,7 @@ def makeGrid(x,y,start_x,start_y,spacingFactor):
              cmds.parent(instanceResult,cameraGroup)     
              cmds.move(i*spacingFactor+start_x,j*spacingFactor+start_y,0) 
              
-         #rNote: rotation of the whole grid is based on the bottom left camera
+         #Note: rotation of the whole grid is based on the bottom left camera
              
         cmds.delete(result[0]) 
           
@@ -103,5 +113,5 @@ def makeCamView(x,y,start_x,start_y,spacingFactor,d,thetaX,thetaY,rot_x,rot_y,ro
        compPack=cmds.group('box','instanceA','cameraGroup',name='compPack')
        cmds.rotate(rot_x,rot_y,rot_z,'compPack')
 
-#Call to the final function with variabeles from the config file                   
+#Call to the final function with variables from the config file                   
 makeCamView(x,y,start_x,start_y,spacingFactor,d,thetaX,thetaY,rot_x,rot_y,rot_z)
