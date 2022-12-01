@@ -3,6 +3,12 @@ import math
 import time
 import configparser
 
+
+
+
+#Clearing the entire screen
+
+
 #Accessing variables from the config file
 
 
@@ -90,7 +96,7 @@ def makeGrid(x,y,start_x,start_y,spacingFactor):
              cmds.parent(instanceResult,cameraGroup)     
              cmds.move(i*spacingFactor+start_x,j*spacingFactor+start_y,0) 
              
-         #Note: rotation of the whole grid is based on the bottom left camera
+         #Note: rotation and translation of the whole grid is based on the bottom left camera
              
         cmds.delete(result[0]) 
           
