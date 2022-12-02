@@ -4,16 +4,17 @@ import time
 import configparser
 
 
-
-
 #Clearing the entire screen
 
 
+if cmds.objExists('compPack'):
+  cmds.delete('compPack')
+		
 #Accessing variables from the config file
-
 
 timeStart = time.time()
 config = configparser.ConfigParser()
+
 print(config.read("C:\\Users\\Woody\\Documents\\GitHub\\LF-Render\\MAYA Scripts\\conf.cfg"))
 
 x=int(config["Input"]["x"])
@@ -116,7 +117,7 @@ def makeCamView(x,y,start_x,start_y,spacingFactor,d,thetaX,thetaY,rot_x,rot_y,ro
        
        makeView(d,thetaX,thetaY,cam_x,cam_y,start_x,start_y)
        
-       compPack=cmds.group('box','instanceA','cameraGroup',name='compPack')
+       compPack=cmds.group('box','instanceA','cameraGroup',name='compPack') 
        cmds.rotate(rot_x,rot_y,rot_z,'compPack')
 
 #Call to the final function with variables from the config file                   
