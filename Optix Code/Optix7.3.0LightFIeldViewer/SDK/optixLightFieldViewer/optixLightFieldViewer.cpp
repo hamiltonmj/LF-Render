@@ -66,12 +66,12 @@ void lightFieldViewer::initCameraState()
 {
     m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
 
-    m_camera.setLookat(make_float3(0.0f, 0.0f, -1.0f/10));
+    //m_camera.setLookat(make_float3(0.0f, 0.0f, -1000.0f));
 
-    m_camera.setLookat(make_float3(0.0f, 0.0f, -3.0f));
+    m_camera.setLookat(make_float3(0.0f, 0.0f, -2000.0));
 
     m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));
-    m_camera.setFovY(60.0f);
+    m_camera.setFovY(10.0f);
     m_camera_changed = true;
 
     m_trackball.setCamera(&m_camera);
@@ -164,6 +164,9 @@ void lightFieldViewer::performDescreteControl(int ctrl)
     case ctrlMap::ctrls::load:
         m_optixEngine.updateTexture(sutil::getCurrFilename());
         break;
+
+    case ctrlMap::ctrls::hideHud:
+        m_hidHud = !m_hidHud;
 
 
     default:
@@ -311,7 +314,9 @@ void lightFieldViewer::renderLoop()
 
         //m_optixEngine.GetState.
         
-        sutil::displayStats(state_update_time, render_time, display_time, m_camera.eye());
+        //Todo add disble key 
+        
+        if (!m_hidHud) { sutil::displayStats(state_update_time, render_time, display_time, m_camera.eye()); }
 
         if (sutil::getChangeState())
         {
@@ -325,15 +330,15 @@ void lightFieldViewer::renderLoop()
 
         if (sutil::isUpdatedCamPos())
         {
-            float* x = sutil::getUpdatedCamPos();
-            m_camera.setEye(make_float3( x[0], x[1], x[2]));
-            m_camera_changed = true;        
+         //   float* x = sutil::getUpdatedCamPos();
+         //   m_camera.setEye(make_float3( x[0], x[1], x[2]));
+          //  m_camera_changed = true;        
         }
         if (sutil::isUpdatedLookAt())
         {
-            float* x = sutil::getUpdatedLookAt();
-            m_camera.setLookat(make_float3(x[0], x[1], x[2]));
-            m_camera_changed = true;
+           // float* x = sutil::getUpdatedLookAt();
+          //  m_camera.setLookat(make_float3(x[0], x[1], x[2]));
+          //  m_camera_changed = true;
         }
 
         glfwSwapBuffers(m_window);

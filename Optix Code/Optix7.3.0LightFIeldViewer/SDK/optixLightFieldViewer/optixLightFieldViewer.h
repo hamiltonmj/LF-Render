@@ -52,13 +52,15 @@ public:
 	float m_shifted = 1;
 	bool m_minimized = false;
 
+	bool m_hidHud = false;
+
 	//sutil::GLDisplay* m_gl_display;
 
 	// Mouse state
 	int32_t m_mouse_button = -1;	
 	
 	lightFieldViewer()
-		: m_optixEngine(RenderEngine()) {}
+		: m_optixEngine(RenderEngine(600, 600)) {}
 
 	/// <summary>
 	/// Places Camera in its inital position within the scene and sets up its vectors

@@ -71,6 +71,10 @@ __device__ float4 billinearInterp(float texPosX, float texPosY, const cudaTextur
     return (r1 * dy) + (r2 * (1-dy));
 }
 
+__device__ float4 nearestNeighbor(float texPosX, float texPosY, const cudaTextureObject_t& tex)
+{
+    return uchar4Tofloat4(tex2D<uchar4>(tex, roundf(texPosX), roundf(texPosY)));
+}
 
 
 extern "C" __global__ void __closesthit__ch1()
@@ -110,7 +114,7 @@ extern "C" __global__ void __closesthit__ch1()
     float3 dir = optixGetWorldRayDirection();
     float horizontalAngle = (dir.x / -dir.z) / maxAngleLength;
     float verticalAngle =   (dir.y / -dir.z) / maxAngleLength;
-    
+
     horizontalAngle = (horizontalAngle/ 2) + 0.5;
     verticalAngle = (verticalAngle / 2) + 0.5;
 
@@ -144,7 +148,8 @@ extern "C" __global__ void __closesthit__ch1()
         texPosY = hitData.m_texHeight - texPosY;
     }
 
-    float4 outColor = billinearInterp(texPosX,texPosY, hitData.m_tex);
+    //float4 outColor = billinearInterp(texPosX,texPosY, hitData.m_tex);
+    float4 outColor = nearestNeighbor(texPosX,texPosY, hitData.m_tex);
 
    //Converts image pixel values into floats then divides them by 255 to properly represent colors
    // Note: color is originally in bgr format this also converts into rgb 
@@ -161,5 +166,5 @@ extern "C" __global__ void __miss__raydir_shade()
     //float3 result = //optixContinuationCall<float3, float3>( 0, ray_dir );
 
 
-    whitted::setPayloadResult(make_float3(0.0f, 0.0f, 0.0f));
+    whitted::setPayloadResult(make_float3(0.0f, 0.0f, 1.0f));
 }

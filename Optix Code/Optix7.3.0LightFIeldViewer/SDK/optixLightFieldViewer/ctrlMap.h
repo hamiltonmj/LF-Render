@@ -18,7 +18,7 @@ class ctrlMap
 	}
 	
 public:
-	enum ctrls { forward, back, up, down, left, right, rotAround, turnCamera, load, setPos, fastCamOn, fastCamOff, exit, scroll, endTracking};
+	enum ctrls { forward, back, up, down, left, right, rotAround, turnCamera, load, setPos, fastCamOn, fastCamOff, exit, scroll, endTracking, hideHud};
 
 	ctrlMap()
 	{
@@ -48,6 +48,7 @@ public:
 		m_controlMap.insert(mapping(GLFW_MOUSE_BUTTON_LEFT, endTracking, 0));
 		m_controlMap.insert(mapping(GLFW_MOUSE_BUTTON_RIGHT, endTracking, 0));
 		m_controlMap.insert(mapping(-6, load, 1));
+		m_controlMap.insert(mapping(GLFW_KEY_H, hideHud));
 	}
 
 	/// <summary>

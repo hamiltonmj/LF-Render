@@ -234,11 +234,16 @@ void RenderEngine::createGeometry()
         // Triangle build input: simple list of three vertices
 
         float w, h, d;
-        float3 Pos = make_float3(0, 0, 0);
+        float3 Pos = make_float3(0.0, 0.0, 0.0);
 
-        w = 0.2f;
-        h = 0.2f;
-        d = -3.0f;
+        w = 50;
+        h = 50;
+        d = -2000.0;
+
+        //w = 1.0;
+       // h = 1.0;
+       // d = -10.0;
+
 
         float halfW = w / 2;
         float halfH = h / 2;

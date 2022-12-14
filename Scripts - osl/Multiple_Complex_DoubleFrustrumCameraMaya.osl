@@ -30,8 +30,8 @@ shader OslCamera(
     //getattribute("hit:uv", pixelXY);
 
     int resolutionPerHogel[2];
-    resolutionPerHogel[0] = (int)floor((float)sceneResolution[0] / numHogelX);
-    resolutionPerHogel[1] = (int)floor((float)sceneResolution[1] / numHogelY);
+    resolutionPerHogel[0] = (int)floor((float)sceneResolution[0] / (numHogelX));
+    resolutionPerHogel[1] = (int)floor((float)sceneResolution[1] / (numHogelY));
 
     //Shift to allow our viewing region to have its (0, 0) coordinate in the center of the region
   //  float widthShift = floor(0.5 * sceneResolution[0]);
@@ -55,11 +55,11 @@ shader OslCamera(
     //Check needed as if we allow any value less then one we either get division by zero  or negative number which will produce errors
     if( numHogelX > 1 )
     {
-        posXChangePerHogel = CaptureWidth / (float) (numHogelX - 1);
+        posXChangePerHogel = CaptureWidth / (float) (numHogelX);
     }
     if( numHogelY > 1 )
     {
-        posYChangePerHogel = CaptureHeight / (float) (numHogelY - 1);
+        posYChangePerHogel = CaptureHeight / (float) (numHogelY);
     }
 
     //we first shift the pos of the ray to the hogel we are in, then we need to shift it to the middle of that hogel
@@ -78,20 +78,32 @@ shader OslCamera(
 
     //Given a pixel will find where inside a hogel it is found in pixels, with the center (0,0) cordinate being in the center of the hogel 
     //so the coordinates go from [-resolutionPerHogel/2 -> resolutionPerHogel/2]
-    int hogelCoordinate[2];
-    hogelCoordinate[0] = (pixelXY[0] % resolutionPerHogel[0]) - (int)floor(0.5 * resolutionPerHogel[0]);
-    hogelCoordinate[1] = (pixelXY[1] % resolutionPerHogel[1]) - (int)floor(0.5 * resolutionPerHogel[1]);
-
+//    int hogelCoordinate[2];
+//    hogelCoordinate[0] = (pixelXY[0] % resolutionPerHogel[0]) - (int)floor(0.5 * (resolutionPerHogel[0] - 1));
+//    hogelCoordinate[1] = (pixelXY[1] % resolutionPerHogel[1]) - (int)floor(0.5 * (resolutionPerHogel[1] - 1));
+    float hogelCoordinate[2];
+    if (resolutionPerHogel[0] > 1)
+    {
+        hogelCoordinate[0] = ((float) mod(pixelXY[0], resolutionPerHogel[0])) / ( (float) (resolutionPerHogel[0] -1));//));
+        hogelCoordinate[1] = ((float) mod(pixelXY[1], resolutionPerHogel[1])) / ( (float) (resolutionPerHogel[1] -1));//));
+    }
+    else
+    {
+        hogelCoordinate[0] = (float) pixelXY[0];
+        hogelCoordinate[1] = (float) pixelXY[1];
+    }
     // Converts the hogelCoordinates into a system based on a new range of (-1.0 -> 1.0)
     //Since we want the values of -1 and 1 to represent the outer edges of the capture plane
     float hogelCoordinatePercent[2];
-    hogelCoordinatePercent[0] = 2 *  ((float)hogelCoordinate[0] / resolutionPerHogel[0]);
-    hogelCoordinatePercent[1] = 2 * -((float)hogelCoordinate[1] / resolutionPerHogel[1]);
+//    hogelCoordinatePercent[0] = 2 *  ((float)hogelCoordinate[0] / (resolutionPerHogel[0] - 1));
+//    hogelCoordinatePercent[1] = 2 * -((float)hogelCoordinate[1] / (resolutionPerHogel[1] - 1));
+    hogelCoordinatePercent[0] = 2 *  (hogelCoordinate[0] - 0.5);
+    hogelCoordinatePercent[1] = 2 * -(hogelCoordinate[1] - 0.5);
 
     //Given a Fov, this computes the the maximum distance in the x,y plane from the center of the fov, any ray will travel, given the focal length is one
     float tanHalfFov = tan(radians(fov/2));
 
-    //we can determine how far a single ray needs to travel in the x,y directions by comparing where they land on the camera plane, with how far the edges of the viewing plane are
+   //we can determine how far a single ray needs to travel in the x,y directions by comparing where they land on the camera plane, with how far the edges of the viewing plane are
     //Since the edge of the camera plane are represented by hogelCoordinatePercent which has values between -1 and 1 at maximum the x,y distane will be 1 * tanHalfFOV which represents
     //The farthest distance on the capture plane
     float u1 = tanHalfFov * hogelCoordinatePercent[0]; 
@@ -101,6 +113,7 @@ shader OslCamera(
     //newPos of the hogel we are working in and not 0,0 so we simply shift the ray by the same value to center it on the hogels center
    // dir = newPos + vector(u1, v1, -1.0);
     dir = vector(u1, v1, -1.0);
+   // dir = vector(0,0, -1.0);
 
     //This is used to allow the creation of the dobule frustrum
     vector dirNormalized = normalize(dir);
@@ -110,7 +123,7 @@ shader OslCamera(
     //To allow the double frustrum behaviour we move our pos in the direction opposite of the rays direction
     // By using inBehindDist and the normalized direction we can set our distance away by parameter
 //    pos = pos - transform("camera", "world",(dirNormalized * inBehindDist));
-    pos = transform("camera", "world", newPos + (dirNormalized * inBehindDist));
+    pos = transform("camera", "world", newPos- (dirNormalized * inBehindDist));
 //    dir = transform("camera", "world", dir);
     dir = transform("camera", "world", dir);
 
