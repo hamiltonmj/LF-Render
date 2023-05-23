@@ -64,14 +64,15 @@
 
 void lightFieldViewer::initCameraState()
 {
-    m_camera.setEye(make_float3(0.0f, 0.0f, 0.0f));
+    m_camera.setEye(make_float3(0.0f, 0.0f, 1.7f));
 
     //m_camera.setLookat(make_float3(0.0f, 0.0f, -1000.0f));
 
-    m_camera.setLookat(make_float3(0.0f, 0.0f, -2000.0));
+    m_camera.setLookat(make_float3(0.0f, 0.0f, 0.0f));
 
     m_camera.setUp(make_float3(0.0f, 1.0f, 0.0f));
-    m_camera.setFovY(10.0f);
+    m_camera.setFovY(60.0f);
+    //m_camera.setFovY(15.0f);
     m_camera_changed = true;
 
     m_trackball.setCamera(&m_camera);

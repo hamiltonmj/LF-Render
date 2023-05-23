@@ -1,9 +1,9 @@
-//#include <glad/glad.h>  // Needs to be included before gl_interop
 
 #include "opencv2/core.hpp" 
 #include "opencv2/opencv.hpp"
 
-//#include <cuda_gl_interop.h>
+#include <glad/glad.h>  // Needs to be included before gl_interop
+#include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 
 #include <optix.h>
@@ -16,13 +16,7 @@
 #include <sutil/Exception.h>
 
 #include <cuda/whitted.h>
-#include <fstream>
-
-#include "TextureDataTypes.h"
-#include "RecordData.h"
 #include "RenderEngine.h"
-
-#include <filesystem.>
 
 RenderEngine::RenderEngine(size_t w, size_t h)
     :m_state(RenderState()), m_output_buffer(sutil::CUDAOutputBufferType::CUDA_DEVICE, w,h)
@@ -33,6 +27,7 @@ RenderEngine::RenderEngine(size_t w, size_t h)
     m_state.params.height = h;
 }
 
+//Resolution setting 
 RenderEngine::RenderEngine()
     :m_state(RenderState()), m_output_buffer(sutil::CUDAOutputBufferType::CUDA_DEVICE, 768, 768)
 //    :m_state(), m_output_buffer(sutil::CUDAOutputBufferType::GL_INTEROP, 768, 768)
@@ -61,61 +56,7 @@ void RenderEngine::handleResize(size_t width, size_t height)
 /// <param name="fileName"></param>
 void RenderEngine::loadTexture(std::string fileName)
 {
-    //if file selected is .txt file, then directly load the file.
-    std::shared_ptr<TextureBase> tex;
-    if (RenderEngine::is_textFile(fileName)) {
-        std::ifstream file;
-        file.open(fileName);
-        if (!file.is_open())
-        {
-            std::cout << "Error Opening Lightfield Config: " << fileName << "\n";
-            exit(-1);
-        }
-        std::string name;
-        unsigned width, height, fov;
-        file >> name >> width >> height >> fov;
-
-        
-        if (name == "!VIDEO!")
-        {
-            size_t pathEnd = fileName.rfind("\\");
-            pathEnd = (std::string::npos == pathEnd) ? fileName.rfind("/") : pathEnd;
-                
-            fileName = fileName.substr(0, pathEnd);
-            std::vector<cv::String> framePaths;
-            cv::glob(fileName, framePaths, false);
-
-            for (size_t x = 0; x < framePaths.size(); x++)
-            {
-                cv::String imageName = framePaths[x];
-                if (RenderEngine::is_textFile(imageName)) continue;
-
-                std::cout << "Opening Texture As LightField: " << imageName << "\n";
-                tex = std::make_shared<LightFieldData>(loadImageToRam(imageName), width, height, fov);
-
-                    
-                m_state.texObjects.insert({ "f" + std::to_string(x),tex});
-                std::cout << "hi";
-            }
-        }
-        else
-        {
-            std::cout << "Opening Texture As LightField: " << fileName << "\n";
-            tex = std::make_shared<LightFieldData>(loadImageToRam(name), width, height, fov);
-            m_state.texObjects.insert({ fileName,tex });
-        }
-    }
-    else
-    {
-        std::cout << "Opening Texture As Image: " << fileName << "\n";
-        tex = std::make_shared<TextureData>(loadImageToRam(fileName));
-        m_state.texObjects.insert({ fileName,tex });
-    }
-
-    //TODO: ADD MULTI TEXTURE SUPPORT
-    //This will need to be modified once more txtures are added, but also a better referning system will need to be implemented to better control how textures are refernced
-    //per face/ object 
-    //IE: a factory could be good here
+    m_fileReader.loadTexFile(fileName, m_state);
 }
 
 
@@ -146,10 +87,6 @@ void RenderEngine::initLaunchParams()
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_state.d_params), sizeof(whitted::LaunchParams)));
 
     m_state.params.handle = m_state.gas_handle;
-
-//    m_output_buffer = sutil::CUDAOutputBuffer<uchar4>(outBuffType, m_state.params.width, m_state.params.height);
-//    m_output_buffer.setStream(m_state.stream);
-
 }
 
 void RenderEngine::handleCameraUpdate(sutil::Camera* cam)
@@ -171,19 +108,29 @@ void RenderEngine::handleResize()
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_state.params.accum_buffer), m_state.params.width * m_state.params.height * sizeof(float4)));
 }
 
-void RenderEngine::buildGas( const OptixAccelBuildOptions& accel_options,
-    const OptixBuildInput& build_input,
-    OptixTraversableHandle& gas_handle,
-    CUdeviceptr& d_gas_output_buffer)
+void RenderEngine::buildGas( const OptixBuildInput& build_input)
 {
+
+    OptixAccelBuildOptions accel_options = {};// { OPTIX_BUILD_FLAG_ALLOW_COMPACTION, OPTIX_BUILD_OPERATION_BUILD };
+    accel_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+    accel_options.operation = OPTIX_BUILD_OPERATION_BUILD;
+
+    // Use default options for simplicity.  In a real use case we would want to
+// enable compaction, etc
+
+   // OptixAccelBufferSizes gas_buffer_sizes;
     OptixAccelBufferSizes gas_buffer_sizes;
-    CUdeviceptr           d_temp_buffer_gas;
-
-    OPTIX_CHECK(optixAccelComputeMemoryUsage(m_state.context, &accel_options, &build_input, 1, &gas_buffer_sizes));
-
+    OPTIX_CHECK(optixAccelComputeMemoryUsage(
+        m_state.context,
+        &accel_options,
+        &build_input,
+        1, // Number of build inputs
+        &gas_buffer_sizes
+    ));
+    
+    CUdeviceptr d_temp_buffer_gas;
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_temp_buffer_gas), gas_buffer_sizes.tempSizeInBytes));
 
-    // non-compacted output and size of compacted GAS
     CUdeviceptr d_buffer_temp_output_gas_and_compacted_size;
     size_t      compactedSizeOffset = roundUp<size_t>(gas_buffer_sizes.outputSizeInBytes, 8ull);
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_buffer_temp_output_gas_and_compacted_size), compactedSizeOffset + 8));
@@ -192,144 +139,119 @@ void RenderEngine::buildGas( const OptixAccelBuildOptions& accel_options,
     emitProperty.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
     emitProperty.result = (CUdeviceptr)((char*)d_buffer_temp_output_gas_and_compacted_size + compactedSizeOffset);
 
-    OPTIX_CHECK(optixAccelBuild(m_state.context, 0, &accel_options, &build_input, 1, d_temp_buffer_gas,
-        gas_buffer_sizes.tempSizeInBytes, d_buffer_temp_output_gas_and_compacted_size,
-        gas_buffer_sizes.outputSizeInBytes, &gas_handle, &emitProperty, 1));
+    OPTIX_CHECK(optixAccelBuild(
+        m_state.context,
+        0,                  // CUDA stream
+        &accel_options,
+        &build_input,
+        1,                  // num build inputs
+        d_temp_buffer_gas,
+        gas_buffer_sizes.tempSizeInBytes,
+        d_buffer_temp_output_gas_and_compacted_size,
+        gas_buffer_sizes.outputSizeInBytes,
+        &m_state.gas_handle,
+        &emitProperty,            // emitted property list
+        1                   // num emitted properties
+    ));
 
-    CUDA_CHECK(cudaFree((void*)d_temp_buffer_gas));
+    // We can now free the scratch space buffer used during build and the vertex
+    // inputs, since they are not needed by our trivial shading method
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_temp_buffer_gas)));
 
     size_t compacted_gas_size;
     CUDA_CHECK(cudaMemcpy(&compacted_gas_size, (void*)emitProperty.result, sizeof(size_t), cudaMemcpyDeviceToHost));
 
     if (compacted_gas_size < gas_buffer_sizes.outputSizeInBytes)
     {
-        CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_gas_output_buffer), compacted_gas_size));
+        CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_state.d_gas_output_buffer), compacted_gas_size));
 
-        // use handle as input and output
-        OPTIX_CHECK(optixAccelCompact(m_state.context, 0, gas_handle, d_gas_output_buffer, compacted_gas_size, &gas_handle));
+        // use handle as input and output     // change gas_handle to stat.gas_handle
+        OPTIX_CHECK(optixAccelCompact(m_state.context, 0, m_state.gas_handle, m_state.d_gas_output_buffer, compacted_gas_size, &m_state.gas_handle));
 
         CUDA_CHECK(cudaFree((void*)d_buffer_temp_output_gas_and_compacted_size));
     }
     else
     {
-        d_gas_output_buffer = d_buffer_temp_output_gas_and_compacted_size;
+        m_state.d_gas_output_buffer = d_buffer_temp_output_gas_and_compacted_size;
     }
 }
-
+//Eventually should seperate the geomertry creation and the building of the gas 
 void RenderEngine::createGeometry()
 {
     //
-        // accel handling
-        //
-    OptixTraversableHandle gas_handle;
-    CUdeviceptr            d_gas_output_buffer;
-    {
-        // Use default options for simplicity.  In a real use case we would want to
-        // enable compaction, etc
-        OptixAccelBuildOptions accel_options = {};
-        //accel_options.buildFlags = OPTIX_BUILD_FLAG_ALLOW_RANDOM_VERTEX_ACCESS;
-        accel_options.operation = OPTIX_BUILD_OPERATION_BUILD;
+    // To ADD Triangles to be rendered simply add them to the vertices array and change the size of the array to match the new inputs 
+    // Triangle build input: simple list of three vertices
 
-        // To ADD Triangles to be rendered simply add them to the vertices array and change the size of the array to match the new inputs 
-        // Triangle build input: simple list of three vertices
+    float w, h, d;
+    float3 Pos = make_float3(0.0, 0.0, 0.0);
 
-        float w, h, d;
-        float3 Pos = make_float3(0.0, 0.0, 0.0);
+    w = 0.5;
+    h = 0.5;
+    d = 0.0;
+    //w = 1.0;
+    // h = 1.0;
+    // d = -10.0;
 
-        w = 50;
-        h = 50;
-        d = -2000.0;
+    float halfW = w / 2;
+    float halfH = h / 2;
 
-        //w = 1.0;
-       // h = 1.0;
-       // d = -10.0;
+    const std::array<float3, 6> vertices =
+    { {
+            make_float3( -halfW, -halfH, d) + Pos,
+            make_float3(  halfW, -halfH, d) + Pos,
+            make_float3( -halfW,  halfH, d) + Pos,
 
-
-        float halfW = w / 2;
-        float halfH = h / 2;
-
-        const std::array<float3, 6> vertices =
-        { {
-                make_float3( -halfW, -halfH, d) + Pos,
-                make_float3(  halfW, -halfH, d) + Pos,
-                make_float3( -halfW,  halfH, d) + Pos,
-
-                make_float3(  halfW,  halfH, d) + Pos,
-                make_float3( -halfW,  halfH, d) + Pos,
-                make_float3(  halfW, -halfH, d) + Pos
-        } };
-/*
-        const std::array<float3, 6> vertices =
-        { {
-                { -1.0f / 10, -1.0f / 10, -3.0f },
-                {  1.0f / 10, -1.0f / 10, -3.0f },
-                { -1.0f / 10,  1.0f / 10, -3.0f },
-
-                {  1.0f / 10,  1.0f / 10, -3.0f },
-                { -1.0f / 10,  1.0f / 10, -3.0f },
-                {  1.0f / 10, -1.0f / 10, -3.0f }
-        } };
-*/
+            make_float3(  halfW,  halfH, d) + Pos,
+            make_float3( -halfW,  halfH, d) + Pos,
+            make_float3(  halfW, -halfH, d) + Pos
+    } };
         
-        const size_t vertices_size = sizeof(float3) * vertices.size();
-        CUdeviceptr d_vertices = 0;
-        CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_vertices), vertices_size));
-        CUDA_CHECK(cudaMemcpy(
-            reinterpret_cast<void*>(d_vertices),
-            vertices.data(),
-            vertices_size,
-            cudaMemcpyHostToDevice
-        ));
+    const size_t vertices_size = sizeof(float3) * vertices.size();
+    CUdeviceptr d_vertices = 0;
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_vertices), vertices_size));
+    CUDA_CHECK(cudaMemcpy(
+        reinterpret_cast<void*>(d_vertices),
+        vertices.data(),
+        vertices_size,
+        cudaMemcpyHostToDevice
+    ));
 
-        // Our build input is a simple list of non-indexed triangle vertices
-        const uint32_t triangle_input_flags[1] = { OPTIX_GEOMETRY_FLAG_NONE };
-        OptixBuildInput triangle_input = {};
-        triangle_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
-        triangle_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
-        triangle_input.triangleArray.numVertices = static_cast<uint32_t>(vertices.size());
-        triangle_input.triangleArray.vertexBuffers = &d_vertices;
-        triangle_input.triangleArray.flags = triangle_input_flags;
-        triangle_input.triangleArray.numSbtRecords = 1;
+    //Mulit-shaders we create a list of indexs which correspond between what primitve connects with what sbt record by index
+//        const uint32_t sbt_index[] = { 0, 0, 1, 1 };
+    const uint32_t sbt_index[] = { 0, 1 }; //1 };
+    CUdeviceptr d_sbt_index;
+    
+    //Mulit-shaders we nopw take this mapping and store it on the graphics card for optix to use during launches
+//        CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sbt_index), sizeof(sbt_index) *2));
+//        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_sbt_index), sbt_index, sizeof(sbt_index) *2, cudaMemcpyHostToDevice));
 
-        OptixAccelBufferSizes gas_buffer_sizes;
-        OPTIX_CHECK(optixAccelComputeMemoryUsage(
-            m_state.context,
-            &accel_options,
-            &triangle_input,
-            1, // Number of build inputs
-            &gas_buffer_sizes
-        ));
-        CUdeviceptr d_temp_buffer_gas;
-        CUDA_CHECK(cudaMalloc(
-            reinterpret_cast<void**>(&d_temp_buffer_gas),
-            gas_buffer_sizes.tempSizeInBytes
-        ));
-        CUDA_CHECK(cudaMalloc(
-            reinterpret_cast<void**>(&d_gas_output_buffer),
-            gas_buffer_sizes.outputSizeInBytes
-        ));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sbt_index), sizeof(sbt_index)));
+    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_sbt_index), sbt_index, sizeof(sbt_index), cudaMemcpyHostToDevice));
 
-        OPTIX_CHECK(optixAccelBuild(
-            m_state.context,
-            0,                  // CUDA stream
-            &accel_options,
-            &triangle_input,
-            1,                  // num build inputs
-            d_temp_buffer_gas,
-            gas_buffer_sizes.tempSizeInBytes,
-            d_gas_output_buffer,
-            gas_buffer_sizes.outputSizeInBytes,
-            &m_state.gas_handle,
-            nullptr,            // emitted property list
-            0                   // num emitted properties
-        ));
+    //multi-shader  Need to include flags for each hit record given:
+    uint32_t flagsPerSBTRecord[2];
+    flagsPerSBTRecord[0] = OPTIX_GEOMETRY_FLAG_NONE;
+    flagsPerSBTRecord[1] = OPTIX_GEOMETRY_FLAG_NONE;
 
-        // We can now free the scratch space buffer used during build and the vertex
-        // inputs, since they are not needed by our trivial shading method
-        CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_temp_buffer_gas)));
-        CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_vertices)));
-    }
+    // Our build input is a simple list of non-indexed triangle vertices
+    // const uint32_t triangle_input_flags[1] = { OPTIX_GEOMETRY_FLAG_NONE };
 
+    OptixBuildInput triangle_input = {};
+    triangle_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+    triangle_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
+    triangle_input.triangleArray.numVertices = static_cast<uint32_t>(vertices.size());
+    triangle_input.triangleArray.vertexBuffers = &d_vertices;
+    triangle_input.triangleArray.vertexStrideInBytes = sizeof(float3);
+    //Multi-Shader: telling optix that i have mutiple shaders to be used within this acceleration structure
+    uint32_t numShaders = 2;
+    triangle_input.triangleArray.numSbtRecords = numShaders;
+    triangle_input.triangleArray.sbtIndexOffsetBuffer = d_sbt_index;
+    triangle_input.triangleArray.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);//sizeof(uint32_t);
+    triangle_input.triangleArray.sbtIndexOffsetStrideInBytes = sizeof(uint32_t);
+    triangle_input.triangleArray.flags = flagsPerSBTRecord;
+        
+    buildGas(triangle_input);
+    CUDA_CHECK(cudaFree((void*)d_sbt_index));
 }
 
 void RenderEngine::createModules()
@@ -372,7 +294,7 @@ void RenderEngine::createCameraProgram(std::vector<OptixProgramGroup>& program_g
     m_state.raygen_prog_group = cam_prog_group;
 }
 
-void RenderEngine::createHitProgram(std::vector<OptixProgramGroup>& program_groups)
+void RenderEngine::createHitProgram(std::vector<OptixProgramGroup>& program_groups, std::string hitFuncName)
 {
     OptixProgramGroup        hitgroup_prog_group;
     OptixProgramGroupOptions hitgroup_prog_group_options = {};
@@ -380,7 +302,7 @@ void RenderEngine::createHitProgram(std::vector<OptixProgramGroup>& program_grou
 
     hitgroup_prog_group_desc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
     hitgroup_prog_group_desc.hitgroup.moduleCH = m_state.shading_module;
-    hitgroup_prog_group_desc.hitgroup.entryFunctionNameCH = "__closesthit__ch1";
+    hitgroup_prog_group_desc.hitgroup.entryFunctionNameCH = hitFuncName.c_str();
 
     char   log[2048];
     size_t sizeof_log = sizeof(log);
@@ -389,6 +311,26 @@ void RenderEngine::createHitProgram(std::vector<OptixProgramGroup>& program_grou
 
     program_groups.push_back(hitgroup_prog_group);
     m_state.hitgroup_prog_group = hitgroup_prog_group;
+
+
+    //Multi Shader temproray code to create a second hit shader for use within the application 
+    OptixProgramGroup        hitgroup_prog_group1;
+    OptixProgramGroupOptions hitgroup_prog_group_options1 = {};
+    OptixProgramGroupDesc    hitgroup_prog_group_desc1 = {};
+
+    hitgroup_prog_group_desc1.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
+    hitgroup_prog_group_desc1.hitgroup.moduleCH = m_state.shading_module;
+    hitgroup_prog_group_desc1.hitgroup.entryFunctionNameCH = "__closesthit__ch1";
+
+    char   log1[2048];
+    size_t sizeof_log1 = sizeof(log1);
+    OPTIX_CHECK_LOG(optixProgramGroupCreate(m_state.context, &hitgroup_prog_group_desc1, 1, &hitgroup_prog_group_options1,
+        log1, &sizeof_log1, &hitgroup_prog_group1));
+
+    program_groups.push_back(hitgroup_prog_group1);
+    m_state.hitgroup_prog_group1 = hitgroup_prog_group1;
+
+    std::cout << log1;
 
 }
 
@@ -410,7 +352,7 @@ void RenderEngine::createMissProgram(std::vector<OptixProgramGroup>& program_gro
 
 void RenderEngine::createPipeline()
 {
-    const uint32_t max_trace_depth = 1;
+    const uint32_t max_trace_depth = 2;
     const uint32_t max_cc_depth = 1;
     const uint32_t max_dc_depth = 1;
     const uint32_t max_traversal_depth = 1;
@@ -426,8 +368,7 @@ void RenderEngine::createPipeline()
         "params"                                       // pipelineLaunchParamsVariableName
     };
     m_state.pipeline_compile_options.usesPrimitiveTypeFlags = OPTIX_PRIMITIVE_TYPE_FLAGS_TRIANGLE;
-
-
+    m_state.pipeline_compile_options.exceptionFlags = OPTIX_EXCEPTION_FLAG_DEBUG | OPTIX_EXCEPTION_FLAG_TRACE_DEPTH | OPTIX_EXCEPTION_FLAG_STACK_OVERFLOW;// | OPTIX_EXCEPTION_FLAG_USER;
     // Prepare program groups
     createModules();
     createCameraProgram( program_groups);
@@ -488,6 +429,7 @@ void RenderEngine::createSBT()
         m_state.sbt.missRecordBase = d_miss_record;
         m_state.sbt.missRecordCount = 1;
         m_state.sbt.missRecordStrideInBytes = static_cast<uint32_t>(sizeof_miss_record);
+       
     }
 
     // Hitgroup program record
@@ -498,27 +440,78 @@ void RenderEngine::createSBT()
             exit(-1);
         }
 
-        //TODO: When adding more then one texture this needs to be adjusted as currently
-        // will just update the single hit record for the "last" texture added
-        //HitGroupRecord hitgroup_record;
-        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group, &m_state.m_hitRecord));
+        size_t const numRecords = 3;
+        HitGroupRecordCudaPointer hitGroupsPointer[numRecords];
+        HitGroupRecord hitGroups[numRecords];
+
+        size_t sizeof_hitgroup_record = sizeof(HitGroupRecord);//sizeof(hitGroups[0]);
+        size_t sizeof_hitgroupPointer_record = sizeof(HitGroupRecordCudaPointer);//sizeof(hitGroups[0]);
+
+
+        //Multi Shader adding [] to each hit group to refernce correct one 
+
+//        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group, &m_state.m_hitRecord));
+        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group, &hitGroups[0]));
+        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group1, &hitGroups[1]));
+        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group1, &hitGroups[2]));
+
+        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group1, &hitGroupsPointer[0]));
+        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group1, &hitGroupsPointer[1]));
+        OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group1, &hitGroupsPointer[2]));
+
+
+        // CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&hitGroups[0].data), sizeof(HitGroupData)));
+        //CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&hitGroups[1].data), sizeof(HitGroupData)));
+
         for (auto texObject : m_state.texObjects)
         {
             auto texture = texObject.second;
-            m_state.m_hitRecord.data = texture->toHitRecord();
-            std::cout << "H: " << texture->m_height << " W:" << texture->m_width << "\n";
+            HitGroupData temp1 = *texture->toHitRecord();
+//            CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&hitGroupsPointer[0].data), sizeof(HitGroupData)));
+//            CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(hitGroupsPointer[0].data), texture->toHitRecord(), sizeof(HitGroupData), cudaMemcpyHostToDevice));
 
+
+            hitGroups[0].data = *(texture->toHitRecord());
+            hitGroups[1].data = *(texture->toHitRecord());
+            hitGroups[2].data = *(texture->toHitRecord());
+
+            hitGroupsPointer[0].data = texture->toDeviceHitRecord();
+            hitGroupsPointer[1].data = texture->toDeviceHitRecord();
+            hitGroupsPointer[2].data = texture->toDeviceHitRecord();
+
+            std::cout << "H: " << texture->m_texHeight << " W:" << texture->m_texWidth << "\n";
         }
 
         CUdeviceptr d_hitgroup_record;
-        size_t      sizeof_hitgroup_record = sizeof(HitGroupRecord);
-        CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_hitgroup_record), sizeof_hitgroup_record));
-        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_hitgroup_record), &m_state.m_hitRecord, sizeof_hitgroup_record,
+//        CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_hitgroup_record), sizeof_hitgroup_record * numRecords));
+//        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_hitgroup_record), &hitGroups, sizeof_hitgroup_record * numRecords,
+//            cudaMemcpyHostToDevice));
+
+        CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_hitgroup_record), sizeof_hitgroupPointer_record * numRecords));
+        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_hitgroup_record), &hitGroupsPointer, sizeof_hitgroupPointer_record * numRecords,
             cudaMemcpyHostToDevice));
 
+
         m_state.sbt.hitgroupRecordBase = d_hitgroup_record;
-        m_state.sbt.hitgroupRecordCount = 1;
+        m_state.sbt.hitgroupRecordCount = numRecords;
         m_state.sbt.hitgroupRecordStrideInBytes = static_cast<uint32_t>(sizeof_hitgroup_record);
+        m_state.sbt.hitgroupRecordStrideInBytes = static_cast<uint32_t>(sizeof_hitgroupPointer_record);
+
+
+//        m_state.sbt.hitgroupRecordBase = d_hitgroup_record;
+//        m_state.sbt.hitgroupRecordCount = 2;// numRecords;
+//        m_state.sbt.hitgroupRecordStrideInBytes = static_cast<uint32_t>(sizeof_hitgroup_record);
+
+        // HitGroupDataFloat tempX;
+        // tempX.m_val = 1;
+        // CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&(hitGroups[1].data)), sizeof(HitGroupDataFloat)));
+        // CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(hitGroups[1].data), &tempX, sizeof(HitGroupDataFloat), cudaMemcpyHostToDevice));
+
+ //        CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_hitgroup_record), sizeof_hitgroup_record * numRecords));
+ //        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_hitgroup_record), hitGroups, sizeof_hitgroup_record * numRecords,
+ //            cudaMemcpyHostToDevice));
+
+
     }
 }
 
@@ -536,9 +529,9 @@ void RenderEngine::updateVideo(size_t currentFrame)
         //HitGroupRecord hitgroup_record;
         //OPTIX_CHECK(optixSbtRecordPackHeader(m_state.hitgroup_prog_group, &hitgroup_record));
 //        hitgroup_record.data = tex->toHitRecord();
-        m_state.m_hitRecord.data.m_tex = *tex->m_texObject;
-        CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(m_state.sbt.hitgroupRecordBase), &m_state.m_hitRecord, sizeof_hitgroup_record,
-            cudaMemcpyHostToDevice));
+    //    m_state.m_hitRecord.data.m_tex = *tex->m_texObject;
+     //   CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(m_state.sbt.hitgroupRecordBase), &m_state.m_hitRecord, sizeof_hitgroup_record,
+      //      cudaMemcpyHostToDevice));
     }
 }
 
@@ -569,8 +562,10 @@ void RenderEngine::createContext()
     CUcontext          cuCtx = 0;  // zero means take the current context
     OPTIX_CHECK(optixInit());
     OptixDeviceContextOptions options = {};
+
     options.logCallbackFunction = &context_log_cb;
     options.logCallbackLevel = 4;
+    //options.validationMode = OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL;
     OPTIX_CHECK(optixDeviceContextCreate(cuCtx, &options, &context));
 
     m_state.context = context;

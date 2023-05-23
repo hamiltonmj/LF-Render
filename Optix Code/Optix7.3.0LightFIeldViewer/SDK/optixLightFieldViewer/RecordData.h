@@ -4,10 +4,8 @@
 
 struct EmptyData {};
 
-class HitGroupData
+struct HitGroupData
 {
-public:
-
     unsigned m_widthInHogel;
     unsigned m_heightInHogel;
     float m_fov;
@@ -17,6 +15,26 @@ public:
 
     cudaTextureObject_t m_tex;
 };
+
+struct HitGroupDataTexture
+{
+//    unsigned m_texWidth;
+//    unsigned m_texHeight;
+
+    cudaTextureObject_t m_tex;
+};
+
+
+struct HitGroupDataFloat
+{
+    //    unsigned m_texWidth;
+    //    unsigned m_texHeight;
+
+    float m_val;
+};
+
+
+//CUdeviceptr d_hitgroup_record;
 
 // This should be re-evaluated as this basic template is good, but leads to programming overhead elsewhere 
 template <typename T>
@@ -29,3 +47,8 @@ struct Record
 typedef Record<EmptyData>    RayGenRecord;
 typedef Record<EmptyData>    MissRecord;
 typedef Record<HitGroupData> HitGroupRecord;
+
+
+typedef Record<HitGroupDataTexture> HitGroupRecordTexture;
+typedef Record<HitGroupDataFloat> HitGroupRecordFloat;
+typedef Record<CUdeviceptr> HitGroupRecordCudaPointer;

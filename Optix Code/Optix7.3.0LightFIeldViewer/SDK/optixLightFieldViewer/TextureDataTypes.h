@@ -16,13 +16,14 @@ class TextureBase
 public:
     cudaArray_t m_cuArray;
     cudaTextureObject_t* m_texObject;
-    unsigned m_width;
-    unsigned m_height;
+    unsigned m_texWidth;
+    unsigned m_texHeight;
 //    HitGroupRecord m_hitRecord; 
     TextureBase(cv::Mat image);
     ~TextureBase();
 
-    HitGroupData virtual TextureBase::toHitRecord() = 0;
+    virtual HitGroupData* TextureBase::toHitRecord() = 0;
+    virtual CUdeviceptr TextureBase::toDeviceHitRecord() = 0;
 };
 
 /// <summary>
@@ -33,7 +34,8 @@ class TextureData : public TextureBase
 public:
     TextureData(cv::Mat image);
 
-    HitGroupData TextureData::toHitRecord();
+    HitGroupData* TextureData::toHitRecord();
+    CUdeviceptr TextureData::toDeviceHitRecord();
 };
 
 /// <summary>
@@ -42,13 +44,14 @@ public:
 /// </summary>
 class LightFieldData : public TextureBase
 {
+public:
     unsigned m_widthInHogels;
     unsigned m_heightInHogels;
     float m_fov;
-public:
-    
+
     LightFieldData::LightFieldData(cv::Mat image,unsigned inWidthInHogel = 0, unsigned inHeightInHogel = 0,unsigned infov = 180);
-    HitGroupData LightFieldData::toHitRecord();
+    HitGroupData* LightFieldData::toHitRecord();
+    CUdeviceptr LightFieldData::toDeviceHitRecord();
 };
 
 /*

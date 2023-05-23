@@ -6,19 +6,19 @@
 #include "TextureDataTypes.h"
 
 TextureBase::TextureBase(cv::Mat image)
-    :m_cuArray(cudaArray_t()), m_texObject(new cudaTextureObject_t()), m_width(image.cols), m_height(image.rows)
+    :m_cuArray(cudaArray_t()), m_texObject(new cudaTextureObject_t()), m_texWidth(image.cols), m_texHeight(image.rows)
 {
     //Desribes how cuda should iterpret the array its being given
     cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<uchar4>();
 
     //Allocate Array on gpu in the same shape as described by the channel descriptor
-    CUDA_CHECK(cudaMallocArray(&m_cuArray, &channelDesc, m_width, m_height));
+    CUDA_CHECK(cudaMallocArray(&m_cuArray, &channelDesc, m_texWidth, m_texHeight));
 
     //Describes the width of the 2D array, in terms of a 1d array
-    const size_t spitch = m_width * sizeof(uchar4);
+    const size_t spitch = m_texWidth * sizeof(uchar4);
 
     //Copies the data on ram into vram, in the format generated above
-    CUDA_CHECK(cudaMemcpy2DToArray(m_cuArray, 0, 0, image.data, spitch, m_width * sizeof(uchar4), m_height, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy2DToArray(m_cuArray, 0, 0, image.data, spitch, m_texWidth * sizeof(uchar4), m_texHeight, cudaMemcpyHostToDevice));
 
     //Describes how cuda should operate on the texture within the gpu
     cudaTextureDesc texDescr;
@@ -59,16 +59,26 @@ TextureData::TextureData(cv::Mat image)
 /// Note this object still posses the ability to destroy the texture object, and as such can be dangerous if we destroy a texture still being expected by the hit record
 /// </summary>
 /// <returns> A hitRecord object which can be placed into a hitrecord for optix to use </returns>
-HitGroupData TextureData::toHitRecord()
+HitGroupData* TextureData::toHitRecord()
 {
     HitGroupData rec;
-    rec.m_texWidth = m_width;
-    rec.m_texHeight = m_height;
+    rec.m_texWidth = m_texWidth;
+    rec.m_texHeight = m_texHeight;
     rec.m_tex = *m_texObject;
-    rec.m_widthInHogel = m_width;
-    rec.m_heightInHogel = m_height;
+    rec.m_widthInHogel = m_texWidth;
+    rec.m_heightInHogel = m_texHeight;
     rec.m_fov = 180;
-    return rec;
+    return &rec;
+}
+
+CUdeviceptr TextureData::toDeviceHitRecord()
+{
+    HitGroupData* rec = toHitRecord();
+    CUdeviceptr d_recordData;
+
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_recordData), sizeof(HitGroupData)));
+    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_recordData), rec, sizeof(HitGroupData), cudaMemcpyHostToDevice));
+    return d_recordData;
 }
 
 /// <summary>
@@ -96,18 +106,29 @@ LightFieldData::LightFieldData(cv::Mat image, unsigned inWidthInHogel, unsigned 
 /// Note this object still posses the ability to destroy the texture object, and as such can be dangerous if we destroy a texture still being expected by the hit record
 /// </summary>
 /// <returns> A hitRecord object which can be placed into a hitrecord for optix to use </returns>
-HitGroupData LightFieldData::toHitRecord()
+HitGroupData* LightFieldData::toHitRecord()
 {
     HitGroupData rec;
-    rec.m_texWidth = m_width;
-    rec.m_texHeight = m_height;
+    rec.m_texWidth = m_texWidth;
+    rec.m_texHeight = m_texHeight;
     rec.m_tex = *m_texObject;
 
     rec.m_widthInHogel = m_widthInHogels;
     rec.m_heightInHogel = m_heightInHogels;
     rec.m_fov = m_fov;
-    return rec;
+    return &rec;
 }
+
+CUdeviceptr LightFieldData::toDeviceHitRecord()
+{
+    HitGroupData* rec = toHitRecord();
+    CUdeviceptr d_recordData;
+
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_recordData), sizeof(HitGroupData)));
+    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_recordData), rec, sizeof(HitGroupData), cudaMemcpyHostToDevice));
+    return d_recordData;
+}
+
 
 /*
 LFVideoData::LFVideoData(cv::Mat image, unsigned inWidthInHogel, unsigned inHeightInHogel, unsigned infov, int curFrame)

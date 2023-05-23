@@ -44,6 +44,10 @@ __device__ float4 uchar4Tofloat4(uchar4 a)
     return make_float4((float)a.x, (float)a.y, (float)a.z, (float)a.w);
 }
 
+__device__ float4 nearestNeighbor(float texPosX, float texPosY, const cudaTextureObject_t& tex)
+{
+    return uchar4Tofloat4(tex2D<uchar4>(tex, roundf(texPosX), roundf(texPosY)));
+}
 
 __device__ float4 billinearInterp(float texPosX, float texPosY, const cudaTextureObject_t& tex)
 {
@@ -60,7 +64,6 @@ __device__ float4 billinearInterp(float texPosX, float texPosY, const cudaTextur
     float dx = (rightX - texPosX) / distLR;
     float dy = (topY - texPosY) / distTB;
 
-
     float4 bottomLeft = uchar4Tofloat4(tex2D<uchar4>(tex, leftX, topY));
     float4 bottomRight = uchar4Tofloat4(tex2D<uchar4>(tex, rightX, topY));
     float4 topLeft = uchar4Tofloat4(tex2D<uchar4>(tex, leftX,bottomY));
@@ -71,18 +74,15 @@ __device__ float4 billinearInterp(float texPosX, float texPosY, const cudaTextur
     return (r1 * dy) + (r2 * (1-dy));
 }
 
-__device__ float4 nearestNeighbor(float texPosX, float texPosY, const cudaTextureObject_t& tex)
-{
-    return uchar4Tofloat4(tex2D<uchar4>(tex, roundf(texPosX), roundf(texPosY)));
-}
-
 
 extern "C" __global__ void __closesthit__ch1()
 {
     // When built-in triangle intersection is used, a number of fundamental
     // attributes are provided by the OptiX API, indcluding barycentric coordinates.
-    const HitGroupData hitData = *(const HitGroupData*)optixGetSbtDataPointer();
-    float2 uv = optixGetTriangleBarycentrics();    
+    
+   // const HitGroupData hitData = *(const HitGroupData*) optixGetSbtDataPointer();
+    const HitGroupData hitData = **(const HitGroupData**)optixGetSbtDataPointer();
+    float2 uv = optixGetTriangleBarycentrics();
 
     if ((optixGetPrimitiveIndex() == 2)) 
     {
@@ -102,7 +102,6 @@ extern "C" __global__ void __closesthit__ch1()
         return;
 
     }
-
 
     //uv values are between 0,1 |  0 being left/ top  and 1 being right/bottom
     //Since we have 2 triangles we need to geth them into the same space for referencing the texture
@@ -156,6 +155,13 @@ extern "C" __global__ void __closesthit__ch1()
    whitted::setPayloadResult(make_float3(outColor.z/255, outColor.y/255, outColor.x / 255));
 }
 
+extern "C" __global__ void __closesthit__Test()
+{
+    whitted::setPayloadResult(make_float3(5.0f, 0.0f, 0.0f));
+
+}
+
+
 // Miss
 extern "C" __global__ void __miss__raydir_shade()
 {
@@ -164,7 +170,5 @@ extern "C" __global__ void __miss__raydir_shade()
     //This was causing an invalid memory access, unsure why
     //Have now removed the function this call may have referenced but issue percisted before this was done
     //float3 result = //optixContinuationCall<float3, float3>( 0, ray_dir );
-
-
     whitted::setPayloadResult(make_float3(0.0f, 0.0f, 1.0f));
 }
